@@ -1,25 +1,28 @@
 import React, { useState } from 'react';
-import Layout from '../../components/layout/Layout';
+import { useNavigate } from 'react-router-dom';
 import { 
-  Plus, 
-  Edit, 
-  Trash2, 
   Search, 
   Filter, 
-  Eye,
-  Download,
+  Eye, 
+  Users,
+  UserRound,
   Mail,
   Phone,
-  Calendar,
+  MapPin,
   GraduationCap,
-  MapPin
+  Building,
+  Plus,
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 const Mahasiswa = () => {
-  const [showForm, setShowForm] = useState(false);
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [editingMahasiswa, setEditingMahasiswa] = useState(null);
+  const [filterProgramStudi, setFilterProgramStudi] = useState('all');
+  const [selectedMahasiswa, setSelectedMahasiswa] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
 
   // Mock data mahasiswa
   const [mahasiswaList, setMahasiswaList] = useState([
@@ -28,538 +31,389 @@ const Mahasiswa = () => {
       nim: '2021001',
       nama: 'Ahmad Fadillah',
       email: 'ahmad.fadillah@email.com',
-      telepon: '081234567890',
-      universitas: 'Universitas Indonesia',
-      jurusan: 'Teknik Informatika',
+      telepon: '+62 812-3456-7890',
+      alamat: 'Jl. Sudirman No. 123, Jakarta Selatan',
+      programStudi: 'Teknik Informatika',
+      fakultas: 'Fakultas Teknik',
       angkatan: '2021',
-      tanggalMulai: '2024-11-01',
-      tanggalSelesai: '2025-01-31',
-      status: 'active',
-      pembimbing: 'Ir. Budi Santoso, M.Kom',
-      divisi: 'Divisi Sistem Informasi'
+      semester: '6',
+      status: 'aktif',
+      mulaiKP: '2024-12-01',
+      selesaiKP: '2025-02-28',
+      lokasiKP: 'PT. Teknologi Indonesia',
+      pembimbingKP: 'Dr. Budi Santoso, S.T., M.T.',
+      dosenPembimbing: 'Ir. Siti Nurhaliza, M.T.',
+      ipk: '3.75',
+      sks: '120'
     },
     {
       id: 2,
       nim: '2021002',
       nama: 'Siti Nurhaliza',
       email: 'siti.nurhaliza@email.com',
-      telepon: '081234567891',
-      universitas: 'Institut Teknologi Bandung',
-      jurusan: 'Sistem Informasi',
+      telepon: '+62 813-4567-8901',
+      alamat: 'Jl. Thamrin No. 45, Jakarta Pusat',
+      programStudi: 'Sistem Informasi',
+      fakultas: 'Fakultas Teknik',
       angkatan: '2021',
-      tanggalMulai: '2024-11-01',
-      tanggalSelesai: '2025-01-31',
-      status: 'active',
-      pembimbing: 'Ir. Siti Aminah, M.T',
-      divisi: 'Divisi Infrastruktur IT'
+      semester: '6',
+      status: 'aktif',
+      mulaiKP: '2024-12-01',
+      selesaiKP: '2025-02-28',
+      lokasiKP: 'PT. Digital Solutions',
+      pembimbingKP: 'Ir. Ahmad Hidayat, M.T.',
+      dosenPembimbing: 'Dr. Rina Marlina, S.T., M.T.',
+      ipk: '3.82',
+      sks: '118'
     },
     {
       id: 3,
       nim: '2021003',
       nama: 'Budi Santoso',
       email: 'budi.santoso@email.com',
-      telepon: '081234567892',
-      universitas: 'Universitas Gadjah Mada',
-      jurusan: 'Teknik Komputer',
+      telepon: '+62 814-5678-9012',
+      alamat: 'Jl. Gatot Subroto No. 67, Jakarta Selatan',
+      programStudi: 'Teknik Informatika',
+      fakultas: 'Fakultas Teknik',
       angkatan: '2021',
-      tanggalMulai: '2024-11-01',
-      tanggalSelesai: '2025-01-31',
-      status: 'completed',
-      pembimbing: 'Ir. Ahmad Hidayat, M.Kom',
-      divisi: 'Divisi Keamanan Siber'
+      semester: '6',
+      status: 'aktif',
+      mulaiKP: '2024-12-01',
+      selesaiKP: '2025-02-28',
+      lokasiKP: 'PT. Software Indonesia',
+      pembimbingKP: 'Ir. Siti Aisyah, M.T.',
+      dosenPembimbing: 'Dr. Muhammad Rizki, S.T., M.T.',
+      ipk: '3.68',
+      sks: '115'
+    },
+    {
+      id: 4,
+      nim: '2021004',
+      nama: 'Dewi Sartika',
+      email: 'dewi.sartika@email.com',
+      telepon: '+62 815-6789-0123',
+      alamat: 'Jl. Rasuna Said No. 89, Jakarta Selatan',
+      programStudi: 'Sistem Informasi',
+      fakultas: 'Fakultas Teknik',
+      angkatan: '2021',
+      semester: '6',
+      status: 'aktif',
+      mulaiKP: '2024-12-01',
+      selesaiKP: '2025-02-28',
+      lokasiKP: 'PT. Data Analytics',
+      pembimbingKP: 'Ir. Bambang Wijaya, M.T.',
+      dosenPembimbing: 'Dr. Sri Wahyuni, S.T., M.T.',
+      ipk: '3.91',
+      sks: '122'
     }
   ]);
 
-  const [formData, setFormData] = useState({
-    nim: '',
-    nama: '',
-    email: '',
-    telepon: '',
-    universitas: '',
-    jurusan: '',
-    angkatan: '',
-    tanggalMulai: '',
-    tanggalSelesai: '',
-    status: 'active',
-    pembimbing: '',
-    divisi: ''
-  });
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (editingMahasiswa) {
-      // Update existing mahasiswa
-      setMahasiswaList(prev => 
-        prev.map(item => 
-          item.id === editingMahasiswa.id 
-            ? { ...formData, id: item.id }
-            : item
-        )
-      );
-      setEditingMahasiswa(null);
-    } else {
-      // Add new mahasiswa
-      const newMahasiswa = {
-        id: Date.now(),
-        ...formData
-      };
-      setMahasiswaList(prev => [newMahasiswa, ...prev]);
-    }
-
-    setFormData({
-      nim: '',
-      nama: '',
-      email: '',
-      telepon: '',
-      universitas: '',
-      jurusan: '',
-      angkatan: '',
-      tanggalMulai: '',
-      tanggalSelesai: '',
-      status: 'active',
-      pembimbing: '',
-      divisi: ''
-    });
-    setShowForm(false);
-  };
-
-  const handleEdit = (mahasiswa) => {
-    setEditingMahasiswa(mahasiswa);
-    setFormData(mahasiswa);
-    setShowForm(true);
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus mahasiswa ini?')) {
-      setMahasiswaList(prev => prev.filter(item => item.id !== id));
-    }
-  };
+  const programStudiList = ['Teknik Informatika', 'Sistem Informasi'];
 
   const filteredMahasiswa = mahasiswaList.filter(mahasiswa => {
     const matchesSearch = 
       mahasiswa.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
       mahasiswa.nim.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      mahasiswa.universitas.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === 'all' || mahasiswa.status === filterStatus;
-    return matchesSearch && matchesFilter;
+      mahasiswa.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || mahasiswa.status === filterStatus;
+    const matchesProgramStudi = filterProgramStudi === 'all' || mahasiswa.programStudi === filterProgramStudi;
+    return matchesSearch && matchesStatus && matchesProgramStudi;
   });
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'active':
-        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Aktif</span>;
-      case 'completed':
-        return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Selesai</span>;
-      case 'inactive':
-        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Tidak Aktif</span>;
+      case 'aktif':
+        return <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Aktif</span>;
+      case 'tidak_aktif':
+        return <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-full">Tidak Aktif</span>;
+      case 'cuti':
+        return <span className="px-3 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700 rounded-full">Cuti</span>;
       default:
         return null;
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active':
-        return 'text-green-600';
-      case 'completed':
-        return 'text-blue-600';
-      case 'inactive':
-        return 'text-gray-600';
-      default:
-        return 'text-gray-600';
-    }
+  const openDetail = (mahasiswa) => {
+    setSelectedMahasiswa(mahasiswa);
+    setShowDetail(true);
   };
 
+  const viewProfile = (nim) => {
+    navigate(`/admin/mahasiswa/${nim}`);
+  };
+
+  const totalMahasiswa = mahasiswaList.length;
+  const totalAktif = mahasiswaList.filter(m => m.status === 'aktif').length;
+  const totalTidakAktif = mahasiswaList.filter(m => m.status === 'tidak_aktif').length;
+
   return (
-    <Layout title="Data Mahasiswa" isAdmin={true}>
-      <div className="space-y-6">
-        {/* Header Section */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Data Mahasiswa</h2>
-            <p className="text-gray-600">Kelola data mahasiswa kerja praktek</p>
-          </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={20} />
-            <span>Tambah Mahasiswa</span>
-          </button>
+    <div className="space-y-8 p-6 md:p-8">
+      
+      {/* Header Section */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Data Mahasiswa</h2>
+          <p className="text-gray-500 mt-1">Kelola data mahasiswa kerja praktek</p>
         </div>
+        <button className="flex items-center space-x-2 bg-primary-blue text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+          <Plus size={18} />
+          <span>Tambah Mahasiswa</span>
+        </button>
+      </div>
 
-        {/* Search and Filter */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Cari mahasiswa..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
-              />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <Users size={24} className="text-blue-600" />
             </div>
-            <div className="flex items-center space-x-2">
-              <Filter size={20} className="text-gray-500" />
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">Semua Status</option>
-                <option value="active">Aktif</option>
-                <option value="completed">Selesai</option>
-                <option value="inactive">Tidak Aktif</option>
-              </select>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Mahasiswa</p>
+              <p className="text-3xl font-bold text-gray-900">{totalMahasiswa}</p>
             </div>
           </div>
         </div>
-
-        {/* Mahasiswa Form */}
-        {showForm && (
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {editingMahasiswa ? 'Edit Mahasiswa' : 'Tambah Mahasiswa Baru'}
-              </h3>
-              <button
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingMahasiswa(null);
-                  setFormData({
-                    nim: '',
-                    nama: '',
-                    email: '',
-                    telepon: '',
-                    universitas: '',
-                    jurusan: '',
-                    angkatan: '',
-                    tanggalMulai: '',
-                    tanggalSelesai: '',
-                    status: 'active',
-                    pembimbing: '',
-                    divisi: ''
-                  });
-                }}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
+        
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-green-100 rounded-lg">
+              <UserRound size={24} className="text-green-600" />
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    NIM
-                  </label>
-                  <input
-                    type="text"
-                    name="nim"
-                    value={formData.nim}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Lengkap
-                  </label>
-                  <input
-                    type="text"
-                    name="nama"
-                    value={formData.nama}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Telepon
-                  </label>
-                  <input
-                    type="tel"
-                    name="telepon"
-                    value={formData.telepon}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Universitas
-                  </label>
-                  <input
-                    type="text"
-                    name="universitas"
-                    value={formData.universitas}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Jurusan
-                  </label>
-                  <input
-                    type="text"
-                    name="jurusan"
-                    value={formData.jurusan}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Angkatan
-                  </label>
-                  <input
-                    type="number"
-                    name="angkatan"
-                    value={formData.angkatan}
-                    onChange={handleInputChange}
-                    required
-                    min="2000"
-                    max="2030"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="active">Aktif</option>
-                    <option value="completed">Selesai</option>
-                    <option value="inactive">Tidak Aktif</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tanggal Mulai
-                  </label>
-                  <input
-                    type="date"
-                    name="tanggalMulai"
-                    value={formData.tanggalMulai}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tanggal Selesai
-                  </label>
-                  <input
-                    type="date"
-                    name="tanggalSelesai"
-                    value={formData.tanggalSelesai}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pembimbing
-                  </label>
-                  <input
-                    type="text"
-                    name="pembimbing"
-                    value={formData.pembimbing}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Divisi
-                  </label>
-                  <input
-                    type="text"
-                    name="divisi"
-                    value={formData.divisi}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingMahasiswa(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  {editingMahasiswa ? 'Update' : 'Simpan'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Mahasiswa List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Daftar Mahasiswa</h3>
-                <p className="text-sm text-gray-600">Total {filteredMahasiswa.length} mahasiswa</p>
-              </div>
-              <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-medium">
-                <Download size={16} />
-                <span>Export Data</span>
-              </button>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Mahasiswa Aktif</p>
+              <p className="text-3xl font-bold text-gray-900">{totalAktif}</p>
             </div>
           </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Mahasiswa
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Universitas
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Periode
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pembimbing
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMahasiswa.map((mahasiswa) => (
-                  <tr key={mahasiswa.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span className="text-sm font-medium text-blue-600">
-                              {mahasiswa.nama.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{mahasiswa.nama}</div>
-                          <div className="text-sm text-gray-500">{mahasiswa.nim}</div>
-                          <div className="text-sm text-gray-500">{mahasiswa.jurusan}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{mahasiswa.universitas}</div>
-                      <div className="text-sm text-gray-500">Angkatan {mahasiswa.angkatan}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {new Date(mahasiswa.tanggalMulai).toLocaleDateString('id-ID')}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        s/d {new Date(mahasiswa.tanggalSelesai).toLocaleDateString('id-ID')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(mahasiswa.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{mahasiswa.pembimbing}</div>
-                      <div className="text-sm text-gray-500">{mahasiswa.divisi}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <button className="text-blue-600 hover:text-blue-900">
-                          <Eye size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleEdit(mahasiswa)}
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(mahasiswa.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {filteredMahasiswa.length === 0 && (
-              <div className="p-12 text-center">
-                <GraduationCap className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Tidak ada data mahasiswa</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {searchTerm || filterStatus !== 'all' 
-                    ? 'Coba ubah filter atau kata kunci pencarian'
-                    : 'Mulai dengan menambahkan mahasiswa pertama'
-                  }
-                </p>
-              </div>
-            )}
+        </div>
+        
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-red-100 rounded-lg">
+              <UserRound size={24} className="text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Tidak Aktif</p>
+              <p className="text-3xl font-bold text-gray-900">{totalTidakAktif}</p>
+            </div>
           </div>
         </div>
       </div>
-    </Layout>
+
+      {/* Search and Filter */}
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Cari mahasiswa..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent w-full transition-colors"
+            />
+          </div>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-colors"
+          >
+            <option value="all">Semua Status</option>
+            <option value="aktif">Aktif</option>
+            <option value="tidak_aktif">Tidak Aktif</option>
+            <option value="cuti">Cuti</option>
+          </select>
+          <select
+            value={filterProgramStudi}
+            onChange={(e) => setFilterProgramStudi(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary-blue focus:border-transparent transition-colors"
+          >
+            <option value="all">Semua Program Studi</option>
+            {programStudiList.map((program, index) => (
+              <option key={index} value={program}>{program}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Mahasiswa List */}
+      <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">Daftar Mahasiswa</h3>
+              <p className="text-sm text-gray-500">Total {filteredMahasiswa.length} mahasiswa</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="divide-y divide-gray-200">
+          {filteredMahasiswa.length > 0 ? (
+            filteredMahasiswa.map((mahasiswa) => (
+              <div key={mahasiswa.id} className="p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <UserRound size={20} className="text-primary-blue" />
+                      <span className="font-semibold text-gray-900">{mahasiswa.nama}</span>
+                      <span className="text-sm text-gray-500">({mahasiswa.nim})</span>
+                      {getStatusBadge(mahasiswa.status)}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Mail size={16} />
+                        <span>{mahasiswa.email}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Phone size={16} />
+                        <span>{mahasiswa.telepon}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <GraduationCap size={16} />
+                        <span>{mahasiswa.programStudi}</span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Building size={16} />
+                        <span>{mahasiswa.lokasiKP}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                      <div className="flex items-center space-x-1">
+                        <span>IPK: {mahasiswa.ipk}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span>SKS: {mahasiswa.sks}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <span>Semester: {mahasiswa.semester}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center space-y-2 ml-4">
+                    <button 
+                      onClick={() => viewProfile(mahasiswa.nim)}
+                      className="p-2 text-primary-blue bg-secondary-blue hover:bg-blue-200 rounded-md transition-colors"
+                      title="Lihat Profile"
+                    >
+                      <Eye size={20} />
+                    </button>
+                    <button 
+                      onClick={() => openDetail(mahasiswa)}
+                      className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                      title="Edit"
+                    >
+                      <Edit size={20} />
+                    </button>
+                    <button 
+                      className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
+                      title="Hapus"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="p-12 text-center text-gray-500">
+              <Users className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-lg font-medium text-gray-900">Tidak ada mahasiswa</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchTerm || filterStatus !== 'all' || filterProgramStudi !== 'all'
+                  ? 'Coba ubah filter atau kata kunci pencarian'
+                  : 'Belum ada mahasiswa yang terdaftar'
+                }
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mahasiswa Detail Modal */}
+      {showDetail && selectedMahasiswa && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">Detail Mahasiswa</h3>
+              <button
+                onClick={() => setShowDetail(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Nama</p>
+                  <p className="font-semibold text-gray-900">{selectedMahasiswa.nama}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">NIM</p>
+                  <p className="font-semibold text-gray-900">{selectedMahasiswa.nim}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Email</p>
+                  <p className="font-semibold text-gray-900">{selectedMahasiswa.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Telepon</p>
+                  <p className="font-semibold text-gray-900">{selectedMahasiswa.telepon}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Program Studi</p>
+                  <p className="font-semibold text-gray-900">{selectedMahasiswa.programStudi}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Status</p>
+                  <p className="font-semibold text-gray-900">{selectedMahasiswa.status}</p>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Lokasi KP</p>
+                  <p className="text-gray-800">{selectedMahasiswa.lokasiKP}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Pembimbing KP</p>
+                  <p className="text-gray-800">{selectedMahasiswa.pembimbingKP}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Dosen Pembimbing</p>
+                  <p className="text-gray-800">{selectedMahasiswa.dosenPembimbing}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-200">
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => {
+                    viewProfile(selectedMahasiswa.nim);
+                    setShowDetail(false);
+                  }}
+                  className="flex-1 flex items-center justify-center space-x-2 bg-primary-blue text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  <Eye size={20} />
+                  <span>Lihat Profile Lengkap</span>
+                </button>
+                <button
+                  onClick={() => setShowDetail(false)}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg font-semibold hover:bg-gray-400 transition-colors"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

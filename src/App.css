@@ -3,8 +3,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Tambahkan gaya khusus Anda di sini */
 .App {
-
+  /* text-align: center; (Opsional, sesuaikan dengan kebutuhan layout) */
 }
-
-/* Custom styles */
