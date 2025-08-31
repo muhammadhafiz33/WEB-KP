@@ -1,6 +1,7 @@
 import React from 'react';
 import { LogOut, User, Users } from 'lucide-react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
+import Swal from 'sweetalert2'; // 1. Import SweetAlert2
 
 const Header = ({ isAdmin = false }) => {
   const navigate = useNavigate();
@@ -20,12 +21,33 @@ const Header = ({ isAdmin = false }) => {
 
   const menuItems = isAdmin ? adminMenuItems : studentMenuItems;
 
+  // 2. Modifikasi fungsi handleLogout
   const handleLogout = () => {
-    localStorage.removeItem('accounts');
-    navigate('/login');
+    Swal.fire({
+      title: 'Anda yakin ingin keluar?',
+      text: "Anda akan diarahkan ke halaman login.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, keluar!',
+      cancelButtonText: 'Batal'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Hapus data dari localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // Arahkan ke halaman login
+        navigate('/login');
+      }
+    });
   };
 
   const headerTitle = isAdmin ? 'Dashboard Admin' : 'Dashboard Mahasiswa';
+  
+  // Ambil data user dari localStorage untuk ditampilkan
+  const user = JSON.parse(localStorage.getItem('user'));
 
   return (
     <header className="bg-white text-gray-800 shadow-md sticky top-0 z-10">
@@ -133,8 +155,9 @@ const Header = ({ isAdmin = false }) => {
         <div className="flex items-center space-x-4">
           <Link to={isAdmin ? '/admin/profile' : '/student/profile'} className="flex items-center space-x-3 group cursor-pointer">
             <div className="text-right hidden sm:block">
-              <p className="font-semibold text-gray-700 group-hover:text-blue-600 transition-colors">{isAdmin ? 'Admin' : 'John Doe'}</p>
-              <p className="text-sm text-gray-500">{isAdmin ? 'Kominfo' : '1202204001 - Teknik Informatika'}</p>
+              {/* 3. Tampilkan data user yang login */}
+              <p className="font-semibold text-gray-700 group-hover:text-blue-600 transition-colors">{user ? user.identifier : 'User'}</p>
+              <p className="text-sm text-gray-500">{user ? user.role : 'Role'}</p>
             </div>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg
               ${isAdmin ? 'bg-purple-600' : 'bg-blue-600'}`}>

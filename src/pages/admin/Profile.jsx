@@ -1,41 +1,68 @@
-import React, { useState } from 'react';
-import { 
-  UserRound, 
-  Mail, 
-  Phone, 
-  Building2,
-  Edit,
-  Save,
-  X,
-  Briefcase
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserRound, Mail, Phone, Building2, Edit, Save, X, Briefcase } from 'lucide-react';
+import Swal from 'sweetalert2';
+
+const API_URL = 'http://localhost:4000/api/profile';
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Mock data untuk Admin
-  const [profileData, setProfileData] = useState({
-    nama: 'Admin Kominfo',
-    email: 'admin.kominfo@email.com',
-    telepon: '081234567890',
-    jabatan: 'Kepala Divisi',
-    divisi: 'Dinas Komunikasi dan Informatika',
-    foto: null
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [profileData, setProfileData] = useState(null);
+  const [editData, setEditData] = useState(null);
 
-  const [editData, setEditData] = useState({ ...profileData });
+  const fetchProfile = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Gagal memuat profil');
+      const data = await response.json();
+      
+      // Konversi null menjadi string kosong untuk form
+      const sanitizedData = {};
+      for (const key in data) {
+        sanitizedData[key] = data[key] === null ? '' : data[key];
+      }
+
+      setProfileData(sanitizedData);
+      setEditData(sanitizedData);
+    } catch (error) {
+      Swal.fire('Error', error.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setEditData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setEditData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    setProfileData(editData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/me`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(editData)
+      });
+      if (!response.ok) throw new Error('Gagal menyimpan profil');
+      
+      Swal.fire('Sukses!', 'Profil berhasil diperbarui.', 'success');
+      setProfileData(editData);
+      setIsEditing(false);
+    } catch (error) {
+      Swal.fire('Error', error.message, 'error');
+    }
   };
 
   const handleCancel = () => {
@@ -43,166 +70,44 @@ const Profile = () => {
     setIsEditing(false);
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setEditData(prev => ({
-        ...prev,
-        foto: URL.createObjectURL(file)
-      }));
-    }
-  };
+  if (isLoading) return <div className="p-10 text-center">Memuat profil admin...</div>;
+  if (!profileData) return <div className="p-10 text-center">Gagal memuat data.</div>;
 
   return (
     <div className="space-y-8 p-6 md:p-8">
-      {/* Header Section */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Profil Admin</h2>
           <p className="text-gray-500">Kelola informasi profil Anda</p>
         </div>
         {!isEditing ? (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md"
-          >
-            <Edit size={20} />
-            <span>Edit Profil</span>
+          <button onClick={() => setIsEditing(true)} className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
+            <Edit size={20} /> <span>Edit Profil</span>
           </button>
         ) : (
           <div className="flex space-x-2">
-            <button
-              onClick={handleCancel}
-              className="flex items-center space-x-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-md"
-            >
-              <X size={20} />
-              <span>Batal</span>
+            <button onClick={handleCancel} className="flex items-center space-x-2 border px-4 py-2 rounded-lg">
+              <X size={20} /> <span>Batal</span>
             </button>
-            <button
-              onClick={handleSave}
-              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md"
-            >
-              <Save size={20} />
-              <span>Simpan</span>
+            <button onClick={handleSave} className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold">
+              <Save size={20} /> <span>Simpan</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Profile Overview */}
-      <div className="bg-white rounded-xl p-8 shadow-md border border-gray-200">
+      <div className="bg-white rounded-xl p-8 shadow-md border">
         <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
-          {/* Profile Photo & Info */}
-          <div className="flex-shrink-0 relative">
-            <div className="w-36 h-36 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-5xl font-bold">
-              {profileData.foto ? (
-                <img 
-                  src={profileData.foto} 
-                  alt="Profile" 
-                  className="w-36 h-36 rounded-full object-cover"
-                />
-              ) : (
-                profileData.nama.split(' ').map(n => n[0]).join('')
-              )}
-            </div>
-            {isEditing && (
-              <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors shadow-lg">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <Edit size={16} />
-              </label>
-            )}
+          <div className="w-36 h-36 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-5xl font-bold">
+            <UserRound size={64} />
           </div>
-
-          {/* Profile Info Fields */}
           <div className="flex-1 w-full">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              {profileData.nama}
-            </h3>
-            <p className="text-gray-500 mb-6">Jabatan: {profileData.jabatan}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
-              <div className="flex items-center space-x-3">
-                <Mail className="text-blue-600 flex-shrink-0" size={20} />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-gray-500">Email</span>
-                  <input
-                    type="email"
-                    name="email"
-                    value={isEditing ? editData.email : profileData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="text-blue-600 flex-shrink-0" size={20} />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-gray-500">Telepon</span>
-                  <input
-                    type="tel"
-                    name="telepon"
-                    value={isEditing ? editData.telepon : profileData.telepon}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Building2 className="text-blue-600 flex-shrink-0" size={20} />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-gray-500">Divisi</span>
-                  <input
-                    type="text"
-                    name="divisi"
-                    value={isEditing ? editData.divisi : profileData.divisi}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Admin specific details */}
-      <div className="bg-white rounded-xl p-8 shadow-md border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">Informasi Jabatan</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex items-center space-x-3">
-            <Briefcase className="text-blue-600" size={20} />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500">Jabatan</p>
-              <input
-                type="text"
-                name="jabatan"
-                value={isEditing ? editData.jabatan : profileData.jabatan}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Building2 className="text-blue-600" size={20} />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500">Divisi</p>
-              <input
-                type="text"
-                name="divisi"
-                value={isEditing ? editData.divisi : profileData.divisi}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-              />
+            <input type="text" name="nama_lengkap" value={editData.nama_lengkap} onChange={handleInputChange} disabled={!isEditing} placeholder="Nama Lengkap Admin" className={`text-2xl font-bold w-full bg-transparent ${isEditing ? 'border-b' : ''}`} />
+            <input type="text" name="jabatan" value={editData.jabatan} onChange={handleInputChange} disabled={!isEditing} placeholder="Jabatan" className={`text-gray-500 mb-6 w-full bg-transparent ${isEditing ? 'border-b' : ''}`} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
+              <InfoField icon={Mail} label="Email" name="email" value={editData.email} onChange={handleInputChange} isEditing={isEditing} />
+              <InfoField icon={Phone} label="Telepon" name="telepon" value={editData.telepon} onChange={handleInputChange} isEditing={isEditing} />
+              <InfoField icon={Building2} label="Divisi" name="divisi" value={editData.divisi} onChange={handleInputChange} isEditing={isEditing} className="md:col-span-2" />
             </div>
           </div>
         </div>
@@ -210,5 +115,15 @@ const Profile = () => {
     </div>
   );
 };
+
+const InfoField = ({ icon: Icon, label, name, value, onChange, isEditing, type = "text", className = "" }) => (
+  <div className={`flex items-center space-x-3 ${className}`}>
+    <Icon className="text-blue-600 flex-shrink-0" size={20} />
+    <div className="flex-1">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <input type={type} name={name} value={value} onChange={onChange} disabled={!isEditing} className={`w-full text-sm font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 p-0`} />
+    </div>
+  </div>
+);
 
 export default Profile;

@@ -1,97 +1,183 @@
-import React, { useState } from 'react';
-import { Plus, Search, Filter, FileText, CheckCircle, Clock, AlertCircle, Calendar, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, FileText, CheckCircle, Clock, AlertCircle, Calendar, Edit, Trash2 } from 'lucide-react';
+import Swal from 'sweetalert2';
+
+const API_URL = 'http://localhost:4000/api';
 
 const Jurnal = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [jurnalEntries, setJurnalEntries] = useState([
-    {
-      id: 1,
-      date: '2024-12-10',
-      activity: 'Pengembangan Sistem Informasi',
-      description: 'Mengembangkan modul laporan keuangan dengan teknologi React dan Node.js',
-      hours: 8,
-      status: 'approved',
-      feedback: 'Bagus, lanjutkan pengembangan'
-    },
-    {
-      id: 2,
-      date: '2024-12-09',
-      activity: 'Analisis Kebutuhan Sistem',
-      description: 'Menganalisis kebutuhan sistem untuk departemen IT',
-      hours: 7.5,
-      status: 'approved',
-      feedback: 'Analisis sudah tepat'
-    },
-    {
-      id: 3,
-      date: '2024-12-08',
-      activity: 'Testing dan Debugging',
-      description: 'Melakukan testing pada fitur yang sudah dikembangkan',
-      hours: 6,
-      status: 'pending',
-      feedback: null
-    },
-    {
-      id: 4,
-      date: '2024-12-07',
-      activity: 'Meeting dengan Tim',
-      description: 'Koordinasi dengan tim pengembangan dan stakeholder',
-      hours: 4,
-      status: 'approved',
-      feedback: 'Koordinasi berjalan lancar'
-    }
-  ]);
-  const [newEntry, setNewEntry] = useState({
-    date: new Date().toISOString().split('T')[0],
-    activity: '',
-    description: '',
-    hours: '',
-    challenges: '',
-    nextPlan: ''
-  });
+  const [jurnalEntries, setJurnalEntries] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedJurnal, setSelectedJurnal] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newId = jurnalEntries.length > 0 ? Math.max(...jurnalEntries.map(entry => entry.id)) + 1 : 1;
-    const newJurnal = { ...newEntry, id: newId, status: 'pending', feedback: null };
-    setJurnalEntries(prev => [newJurnal, ...prev]);
-    setShowForm(false);
-    setNewEntry({
-      date: new Date().toISOString().split('T')[0],
-      activity: '',
-      description: '',
-      hours: '',
-      challenges: '',
-      nextPlan: ''
+  const [formEntry, setFormEntry] = useState({
+    tanggal: new Date().toISOString().split('T')[0],
+    kegiatan: '',
+    deskripsi: '',
+    jam_kerja: '',
+    hambatan: '',
+    rencana_selanjutnya: ''
+  });
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormEntry(prev => ({ ...prev, [name]: value }));
+  };
+
+  const showMessage = (title, message, icon) => {
+    Swal.fire({
+      title: title,
+      text: message,
+      icon: icon
     });
   };
 
-  const openDetail = (jurnal) => {
+  const fetchJurnals = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error("Token tidak ditemukan");
+
+      const response = await fetch(`${API_URL}/jurnals`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data jurnal');
+      }
+      const data = await response.json();
+      setJurnalEntries(data);
+    } catch (error) {
+      showMessage('Error', error.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJurnals();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error("Token tidak ditemukan");
+
+      let response;
+      if (isEditing) {
+        // Logika untuk mengedit data
+        response = await fetch(`${API_URL}/jurnals/${selectedJurnal.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(formEntry)
+        });
+      } else {
+        // Logika untuk membuat data baru
+        response = await fetch(`${API_URL}/jurnals`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(formEntry)
+        });
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Gagal menyimpan jurnal');
+      }
+
+      showMessage('Sukses!', 'Jurnal berhasil disimpan.', 'success');
+      setShowForm(false);
+      setIsEditing(false);
+      setFormEntry({
+        tanggal: new Date().toISOString().split('T')[0],
+        kegiatan: '',
+        deskripsi: '',
+        jam_kerja: '',
+        hambatan: '',
+        rencana_selanjutnya: ''
+      });
+      fetchJurnals();
+    } catch (error) {
+      showMessage('Error', error.message, 'error');
+    }
+  };
+
+  const openEditForm = (jurnal) => {
+    setIsEditing(true);
     setSelectedJurnal(jurnal);
-    setShowDetail(true);
+    setFormEntry({
+      tanggal: jurnal.tanggal.split('T')[0],
+      kegiatan: jurnal.kegiatan,
+      deskripsi: jurnal.deskripsi,
+      jam_kerja: jurnal.jam_kerja,
+      hambatan: jurnal.hambatan || '',
+      rencana_selanjutnya: jurnal.rencana_selanjutnya || ''
+    });
+    setShowForm(true);
+  };
+  
+  const handleDelete = async (jurnalId) => {
+    const result = await Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: "Anda tidak akan dapat mengembalikan ini!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_URL}/jurnals/${jurnalId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!response.ok) throw new Error('Gagal menghapus jurnal');
+        
+        showMessage('Terhapus!', 'Jurnal berhasil dihapus.', 'success');
+        fetchJurnals();
+      } catch (error) {
+        showMessage('Error', error.message, 'error');
+      }
+    }
   };
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'approved':
+      case 'APPROVED':
         return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
             <CheckCircle className="w-3 h-3 mr-1" />
             Disetujui
           </span>
         );
-      case 'pending':
+      case 'PENDING':
         return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
             <Clock className="w-3 h-3 mr-1" />
             Menunggu
           </span>
         );
-      case 'rejected':
+      case 'REJECTED':
         return (
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
             <AlertCircle className="w-3 h-3 mr-1" />
@@ -102,11 +188,16 @@ const Jurnal = () => {
         return null;
     }
   };
+  
+  const openDetail = (jurnal) => {
+    setSelectedJurnal(jurnal);
+    setShowDetail(true);
+  };
 
   const filteredEntries = jurnalEntries.filter(entry => {
-    const matchesSearch = entry.activity.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          entry.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || entry.status === filterStatus;
+    const matchesSearch = entry.kegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          entry.deskripsi.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || entry.status.toUpperCase() === filterStatus.toUpperCase();
     return matchesSearch && matchesStatus;
   });
 
@@ -125,7 +216,7 @@ const Jurnal = () => {
       <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => { setShowForm(true); setIsEditing(false); }}
             className="flex items-center justify-center space-x-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg font-semibold text-sm transition-colors w-full md:w-auto"
           >
             <Plus className="w-4 h-4" />
@@ -150,9 +241,9 @@ const Jurnal = () => {
               className="px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm w-full sm:w-auto"
             >
               <option value="all">Semua Status</option>
-              <option value="approved">Disetujui</option>
-              <option value="pending">Menunggu</option>
-              <option value="rejected">Ditolak</option>
+              <option value="APPROVED">Disetujui</option>
+              <option value="PENDING">Menunggu</option>
+              <option value="REJECTED">Ditolak</option>
             </select>
           </div>
         </div>
@@ -166,24 +257,25 @@ const Jurnal = () => {
         </div>
         
         <div className="space-y-4 p-6">
-          {filteredEntries.length > 0 ? (
+          {isLoading ? (
+            <div className="text-center p-12 text-gray-500">Memuat data jurnal...</div>
+          ) : filteredEntries.length > 0 ? (
             filteredEntries.map((entry) => (
               <div 
                 key={entry.id} 
                 className="bg-white p-6 rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-200 cursor-pointer"
-                onClick={() => openDetail(entry)}
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                  <div className="flex-1" onClick={() => openDetail(entry)}>
                     <div className="flex items-center space-x-3 mb-2">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <FileText className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">{entry.activity}</h3>
+                        <h3 className="text-lg font-bold text-gray-900">{entry.kegiatan}</h3>
                         <p className="text-sm text-gray-500">
                           <Calendar size={14} className="inline-block mr-1 text-gray-400" />
-                          {new Date(entry.date).toLocaleDateString('id-ID', {
+                          {new Date(entry.tanggal).toLocaleDateString('id-ID', {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
@@ -193,24 +285,42 @@ const Jurnal = () => {
                       </div>
                     </div>
                     
-                    <p className="text-gray-700 mt-2 mb-3">{entry.description}</p>
+                    <p className="text-gray-700 mt-2 mb-3">{entry.deskripsi}</p>
                     
                     <div className="flex items-center space-x-4 text-sm text-gray-600">
                       <span className="flex items-center space-x-1">
                         <Clock size={16} />
-                        <span>{entry.hours} jam</span>
+                        <span>{entry.jam_kerja} jam</span>
                       </span>
-                      {entry.feedback && (
+                      {entry.komentar_admin && (
                         <span className="flex items-center space-x-1 text-blue-600">
                           <AlertCircle size={16} />
-                          <span>Feedback: {entry.feedback}</span>
+                          <span>Feedback: {entry.komentar_admin}</span>
                         </span>
                       )}
                     </div>
                   </div>
                   
-                  <div className="ml-4 flex-shrink-0">
+                  <div className="ml-4 flex-shrink-0 flex items-center space-x-2">
                     {getStatusBadge(entry.status)}
+                    {(entry.status === 'PENDING' || entry.status === 'REJECTED') && (
+                      <>
+                        <button
+                          onClick={() => openEditForm(entry)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit Jurnal"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(entry.id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Hapus Jurnal"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -230,124 +340,57 @@ const Jurnal = () => {
         </div>
       </div>
 
-      {/* New Entry Modal */}
+      {/* New/Edit Entry Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Buat Jurnal Baru</h2>
-                <p className="text-gray-600">Isi detail kegiatan kerja praktek Anda</p>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {isEditing ? 'Edit Jurnal' : 'Buat Jurnal Baru'}
+                </h2>
+                <p className="text-gray-600">
+                  {isEditing ? 'Perbarui detail kegiatan kerja praktek Anda' : 'Isi detail kegiatan kerja praktek Anda'}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
                 className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                &times;
-              </button>
+              >&times;</button>
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tanggal
-                  </label>
-                  <input
-                    type="date"
-                    value={newEntry.date}
-                    onChange={(e) => setNewEntry({...newEntry, date: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                  <input type="date" name="tanggal" value={formEntry.tanggal} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required />
                 </div>
-                
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Durasi (Jam)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="24"
-                    value={newEntry.hours}
-                    onChange={(e) => setNewEntry({...newEntry, hours: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="8"
-                    required
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Durasi (Jam)</label>
+                  <input type="number" name="jam_kerja" step="0.5" min="0" max="24" value={formEntry.jam_kerja} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="8" required />
                 </div>
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Kegiatan
-                </label>
-                <input
-                  type="text"
-                  value={newEntry.activity}
-                  onChange={(e) => setNewEntry({...newEntry, activity: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Contoh: Pengembangan sistem informasi"
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kegiatan</label>
+                <input type="text" name="kegiatan" value={formEntry.kegiatan} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Contoh: Pengembangan sistem informasi" required />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Deskripsi Detail
-                </label>
-                <textarea
-                  value={newEntry.description}
-                  onChange={(e) => setNewEntry({...newEntry, description: e.target.value})}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Jelaskan detail kegiatan yang dilakukan..."
-                  required
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi Detail</label>
+                <textarea name="deskripsi" value={formEntry.deskripsi} onChange={handleInputChange} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Jelaskan detail kegiatan yang dilakukan..." required />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tantangan/Hambatan
-                </label>
-                <textarea
-                  value={newEntry.challenges}
-                  onChange={(e) => setNewEntry({...newEntry, challenges: e.target.value})}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Apa tantangan yang dihadapi?"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tantangan/Hambatan</label>
+                <textarea name="hambatan" value={formEntry.hambatan} onChange={handleInputChange} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Apa tantangan yang dihadapi?" />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rencana Selanjutnya
-                </label>
-                <textarea
-                  value={newEntry.nextPlan}
-                  onChange={(e) => setNewEntry({...newEntry, nextPlan: e.target.value})}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Apa yang akan dilakukan selanjutnya?"
-                />
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rencana Selanjutnya</label>
+                <textarea name="rencana_selanjutnya" value={formEntry.rencana_selanjutnya} onChange={handleInputChange} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Apa yang akan dilakukan selanjutnya?" />
               </div>
-              
               <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-                >
-                  Simpan Jurnal
+                <button type="button" onClick={() => { setShowForm(false); setIsEditing(false); }} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors font-medium">Batal</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+                  {isEditing ? 'Simpan Perubahan' : 'Simpan Jurnal'}
                 </button>
               </div>
             </form>
@@ -357,69 +400,68 @@ const Jurnal = () => {
 
       {/* Jurnal Detail Modal */}
       {showDetail && selectedJurnal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-bold text-gray-900">Detail Jurnal</h3>
-                  <button
-                    onClick={() => setShowDetail(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    &times;
-                  </button>
-                </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Detail Jurnal</h3>
+                <button
+                  onClick={() => setShowDetail(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  &times;
+                </button>
               </div>
-              
-              <div className="p-6 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kegiatan</label>
-                    <p className="text-gray-900 font-semibold">{selectedJurnal.activity}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
-                    <p className="text-gray-900">
-                      {new Date(selectedJurnal.date).toLocaleDateString('id-ID', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-                    <p className="text-gray-900">{selectedJurnal.description}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Durasi</label>
-                    <p className="text-gray-900">{selectedJurnal.hours} jam</p>
-                  </div>
-                  {selectedJurnal.challenges && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Tantangan/Hambatan</label>
-                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedJurnal.challenges}</p>
-                    </div>
-                  )}
-                  {selectedJurnal.nextPlan && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Rencana Selanjutnya</label>
-                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedJurnal.nextPlan}</p>
-                    </div>
-                  )}
-                  {selectedJurnal.feedback && (
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Feedback</label>
-                      <p className="text-blue-800 bg-blue-50 p-3 rounded-lg">{selectedJurnal.feedback}</p>
-                    </div>
-                  )}
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Kegiatan</label>
+                  <p className="text-gray-900 font-semibold">{selectedJurnal.kegiatan}</p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                  <p className="text-gray-900">
+                    {new Date(selectedJurnal.tanggal).toLocaleDateString('id-ID', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                  <p className="text-gray-900">{selectedJurnal.deskripsi}</p>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Durasi</label>
+                  <p className="text-gray-900">{selectedJurnal.jam_kerja} jam</p>
+                </div>
+                {selectedJurnal.hambatan && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tantangan/Hambatan</label>
+                    <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedJurnal.hambatan}</p>
+                  </div>
+                )}
+                {selectedJurnal.rencana_selanjutnya && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Rencana Selanjutnya</label>
+                    <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedJurnal.rencana_selanjutnya}</p>
+                  </div>
+                )}
+                {selectedJurnal.komentar_admin && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Feedback</label>
+                    <p className="text-blue-800 bg-blue-50 p-3 rounded-lg">{selectedJurnal.komentar_admin}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        )}
-
+        </div>
+      )}
     </div>
   );
 };

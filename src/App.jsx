@@ -4,6 +4,9 @@ import Layout from './components/layout/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
+// Import komponen ProtectedRoute
+import ProtectedRoute from './components/auth/ProtectedRoute';
+
 // Import file CSS yang baru
 import './App.css';
 
@@ -26,32 +29,36 @@ function App() {
     <Router>
       <div className="App">
         <Routes>
-          {/* Public Routes */}
+          {/* Rute Publik (tanpa proteksi) */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
-          {/* Student Routes with Layout */}
-          <Route path="/student" element={<Layout isAdmin={false} />}>
-            <Route index element={<Navigate to="dashboard" />} />
-            <Route path="dashboard" element={<StudentDashboard />} />
-            <Route path="jurnal" element={<StudentJurnal />} />
-            <Route path="absensi" element={<StudentAbsensi />} />
-            <Route path="profile" element={<StudentProfile />} />
+          {/* Rute yang Dilindungi untuk MAHASISWA */}
+          <Route element={<ProtectedRoute allowedRoles={['MAHASISWA']} />}>
+            <Route path="/student" element={<Layout isAdmin={false} />}>
+              <Route index element={<Navigate to="dashboard" />} />
+              <Route path="dashboard" element={<StudentDashboard />} />
+              <Route path="jurnal" element={<StudentJurnal />} />
+              <Route path="absensi" element={<StudentAbsensi />} />
+              <Route path="profile" element={<StudentProfile />} />
+            </Route>
           </Route>
           
-          {/* Admin Routes with Layout */}
-          <Route path="/admin" element={<Layout isAdmin={true} />}>
-            <Route index element={<Navigate to="dashboard" />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="mahasiswa" element={<AdminMahasiswa />} />
-            <Route path="jurnal" element={<AdminJurnal />} />
-            <Route path="absensi" element={<AdminAbsensi />} />
-            <Route path="profile" element={<AdminProfile />} />
-            <Route path="mahasiswa/:nim" element={<AdminProfileMahasiswa />} />
+          {/* Rute yang Dilindungi untuk ADMIN */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+            <Route path="/admin" element={<Layout isAdmin={true} />}>
+              <Route index element={<Navigate to="dashboard" />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="mahasiswa" element={<AdminMahasiswa />} />
+              <Route path="jurnal" element={<AdminJurnal />} />
+              <Route path="absensi" element={<AdminAbsensi />} />
+              <Route path="profile" element={<AdminProfile />} />
+              <Route path="mahasiswa/:nim" element={<AdminProfileMahasiswa />} />
+            </Route>
           </Route>
           
-          {/* Fallback to Login */}
+          {/* Fallback jika URL tidak cocok dengan rute mana pun */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

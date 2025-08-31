@@ -1,58 +1,82 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Lock, Mail, GraduationCap, Building2, Eye, EyeOff } from 'lucide-react';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { User, GraduationCap, Lock, Mail, Eye, EyeOff } from "lucide-react";
+import Swal from "sweetalert2";
+
+const API_URL = "http://localhost:4000/api/auth";
+
+const InputField = ({ icon: Icon, type = "text", name, value, onChange, placeholder, required = true, rightElement }) => (
+  <div className="relative">
+    <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      required={required}
+      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+    {rightElement && (
+      <div className="absolute right-3 top-1/2 -translate-y-1/2">{rightElement}</div>
+    )}
+  </div>
+);
 
 const Register = () => {
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    nama_lengkap: "",
+    nim: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleInputChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    // Cek jika password dan konfirmasi password tidak cocok
     if (formData.password !== formData.confirmPassword) {
-      alert('Password dan konfirmasi password tidak cocok.');
-      return;
-    }
-    
-    // Ambil data akun yang sudah ada dari localStorage
-    const storedAccounts = JSON.parse(localStorage.getItem('accounts')) || [];
-    
-    // Cek apakah username sudah terdaftar
-    const isUsernameTaken = storedAccounts.some(account => account.username === formData.username);
-    if (isUsernameTaken) {
-      alert('Username sudah terdaftar. Silakan gunakan username lain.');
-      return;
+      setIsLoading(false);
+      return Swal.fire("Oops...", "Password dan konfirmasi tidak cocok.", "error");
     }
 
-    // Buat akun baru sebagai mahasiswa
-    const newAccount = {
-      username: formData.username,
-      email: formData.email,
-      password: formData.password,
-      userType: 'mahasiswa'
-    };
+    try {
+      const response = await fetch(`${API_URL}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nama_lengkap: formData.nama_lengkap,
+          nim: formData.nim,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
-    // Simpan akun baru ke localStorage
-    storedAccounts.push(newAccount);
-    localStorage.setItem('accounts', JSON.stringify(storedAccounts));
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Registrasi gagal");
 
-    alert('Registrasi berhasil! Silakan login.');
-    navigate('/login');
+      Swal.fire({
+        icon: "success",
+        title: "Registrasi Berhasil!",
+        text: "Anda akan diarahkan ke halaman login.",
+        timer: 2000,
+        showConfirmButton: false,
+        timerProgressBar: true,
+      }).then(() => navigate("/login"));
+    } catch (err) {
+      Swal.fire("Registrasi Gagal", err.message, "error");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -66,85 +90,68 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleInputChange}
-              placeholder="NIM Mahasiswa"
-              required
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              placeholder="Email"
-              required
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              placeholder="Password"
-              required
-              className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-600"
-            >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-          </div>
-
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              placeholder="Konfirmasi Password"
-              required
-              className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-600"
-            >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-          </div>
+          <InputField
+            icon={User}
+            name="nama_lengkap"
+            value={formData.nama_lengkap}
+            onChange={handleChange}
+            placeholder="Nama Lengkap"
+          />
+          <InputField
+            icon={GraduationCap}
+            name="nim"
+            value={formData.nim}
+            onChange={handleChange}
+            placeholder="NIM Mahasiswa"
+          />
+          <InputField
+            icon={Mail}
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Email"
+          />
+          <InputField
+            icon={Lock}
+            type={showPassword ? "text" : "password"}
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Password"
+            rightElement={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-gray-400 hover:text-blue-600"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            }
+          />
+          <InputField
+            icon={Lock}
+            type={showPassword ? "text" : "password"}
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            placeholder="Konfirmasi Password"
+          />
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+            disabled={isLoading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
           >
-            REGISTER
+            {isLoading ? "Mendaftarkan..." : "REGISTER"}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm">
           <p>
-            Sudah punya akun?{' '}
+            Sudah punya akun?{" "}
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate("/login")}
               className="text-blue-600 font-medium hover:underline"
             >
               Login

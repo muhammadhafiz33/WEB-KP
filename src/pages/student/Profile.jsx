@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   UserRound, 
   Mail, 
@@ -10,51 +10,67 @@ import {
   Save,
   X,
   Building2,
-  Clock,
-  CircleCheck,
-  TrendingUp,
-  Briefcase
+  Briefcase,
+  Camera
 } from 'lucide-react';
-import Layout from '../../components/layout/Layout'; // Menghapus impor Layout dari sini karena sudah ada di App.jsx
+import Swal from 'sweetalert2';
+
+const API_URL = 'http://localhost:4000/api/profile/me';
+
+// Fungsi helper untuk memformat tanggal
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  // Mengambil hanya bagian tanggal (yyyy-MM-dd) dari string ISO
+  return dateString.split('T')[0];
+};
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
-  
-  // Mock data mahasiswa
-  const [profileData, setProfileData] = useState({
-    nim: '2021001',
-    nama: 'Ahmad Fadillah',
-    email: 'ahmad.fadillah@email.com',
-    telepon: '081234567890',
-    alamat: 'Jl. Sudirman No. 123, Jakarta Pusat',
-    universitas: 'Universitas Indonesia',
-    jurusan: 'Teknik Informatika',
-    angkatan: '2021',
-    tanggalMulai: '2024-11-01',
-    tanggalSelesai: '2025-01-31',
-    pembimbing: 'Ir. Budi Santoso, M.Kom',
-    divisi: 'Divisi Sistem Informasi',
-    foto: null
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [profileData, setProfileData] = useState(null);
+  const [editData, setEditData] = useState(null);
 
-  const [editData, setEditData] = useState({ ...profileData });
+  const fetchProfile = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      // Hapus /me di sini, cukup API_URL saja
+      const response = await fetch(API_URL, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Gagal memuat profil');
+      const data = await response.json();
+      
+      // Format tanggal sebelum disimpan ke state
+      const formattedData = {
+        ...data,
+        tanggalMulai: formatDateForInput(data.tanggalMulai),
+        tanggalSelesai: formatDateForInput(data.tanggalSelesai),
+      };
+      
+      // Konversi null menjadi string kosong untuk input form
+      Object.keys(formattedData).forEach(key => {
+        if (formattedData[key] === null) {
+          formattedData[key] = '';
+        }
+      });
+
+      setProfileData(formattedData);
+      setEditData(formattedData);
+    } catch (error) {
+      Swal.fire('Error', error.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setEditData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSave = () => {
-    setProfileData(editData);
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setEditData(profileData);
-    setIsEditing(false);
+    setEditData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e) => {
@@ -62,282 +78,156 @@ const Profile = () => {
     if (file) {
       setEditData(prev => ({
         ...prev,
-        foto: URL.createObjectURL(file)
+        foto: URL.createObjectURL(file), // Buat URL lokal untuk pratinjau
+        fotoFile: file // Simpan objek file asli untuk diunggah
       }));
     }
   };
 
-  const getProgressPercentage = () => {
-    const start = new Date(profileData.tanggalMulai);
-    const end = new Date(profileData.tanggalSelesai);
-    const today = new Date();
-    
-    const totalDuration = end - start;
-    const elapsed = today - start;
-    
-    if (elapsed <= 0) return 0;
-    if (elapsed >= totalDuration) return 100;
-    
-    return Math.round((elapsed / totalDuration) * 100);
+  const handleSave = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      for (const key in editData) {
+        if (key !== 'foto' && key !== 'fotoFile') {
+          formData.append(key, editData[key]);
+        }
+      }
+      if (editData.fotoFile) {
+        formData.append('foto', editData.fotoFile);
+      }
+
+      const response = await fetch(API_URL, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      if (!response.ok) throw new Error('Gagal menyimpan profil');
+      Swal.fire('Sukses!', 'Profil berhasil diperbarui.', 'success');
+      fetchProfile();
+      setIsEditing(false);
+    } catch (error) {
+      Swal.fire('Error', error.message, 'error');
+    }
   };
 
-  const progressPercentage = getProgressPercentage();
+  const handleCancel = () => {
+    setEditData(profileData);
+    setIsEditing(false);
+  };
+
+  if (isLoading) {
+    return <div className="text-center p-10">Memuat profil...</div>;
+  }
+
+  if (!profileData) {
+    return <div className="text-center p-10">Gagal memuat profil.</div>;
+  }
 
   return (
     <div className="space-y-8 p-6 md:p-8">
-      {/* Header Section */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-gray-900">Profil Mahasiswa</h2>
           <p className="text-gray-500">Kelola informasi profil Anda</p>
         </div>
         {!isEditing ? (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md"
-          >
-            <Edit size={20} />
-            <span>Edit Profil</span>
+          <button onClick={() => setIsEditing(true)} className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
+            <Edit size={20} /> <span>Edit Profil</span>
           </button>
         ) : (
           <div className="flex space-x-2">
-            <button
-              onClick={handleCancel}
-              className="flex items-center space-x-2 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-md"
-            >
-              <X size={20} />
-              <span>Batal</span>
+            <button onClick={handleCancel} className="flex items-center space-x-2 border px-4 py-2 rounded-lg">
+              <X size={20} /> <span>Batal</span>
             </button>
-            <button
-              onClick={handleSave}
-              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors shadow-md"
-            >
-              <Save size={20} />
-              <span>Simpan</span>
+            <button onClick={handleSave} className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg font-semibold">
+              <Save size={20} /> <span>Simpan</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Profile Overview */}
-      <div className="bg-white rounded-xl p-8 shadow-md border border-gray-200">
+      <div className="bg-white rounded-xl p-8 shadow-md border">
         <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
           {/* Profile Photo & Info */}
           <div className="flex-shrink-0 relative">
             <div className="w-36 h-36 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-5xl font-bold">
-              {profileData.foto ? (
+              {editData.foto ? (
                 <img 
-                  src={profileData.foto} 
+                  src={editData.foto} 
                   alt="Profile" 
                   className="w-36 h-36 rounded-full object-cover"
                 />
               ) : (
-                profileData.nama.split(' ').map(n => n[0]).join('')
+                profileData.nama ? profileData.nama.split(' ').map(n => n[0]).join('') : <UserRound size={64}/>
               )}
             </div>
             {isEditing && (
-              <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors shadow-lg">
+              <label 
+                htmlFor="profile-photo-upload"
+                className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors shadow-lg"
+              >
                 <input
+                  id="profile-photo-upload"
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <Edit size={16} />
+                <Camera size={16} />
               </label>
             )}
           </div>
-
-          {/* Profile Info Fields */}
           <div className="flex-1 w-full">
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              {profileData.nama}
-            </h3>
+            <input
+              type="text" name="nama" value={editData.nama} onChange={handleInputChange} disabled={!isEditing}
+              placeholder="Masukkan nama lengkap..."
+              className={`text-2xl font-bold text-gray-900 mb-2 w-full bg-transparent ${isEditing ? 'border-b' : ''}`}
+            />
             <p className="text-gray-500 mb-6">NIM: {profileData.nim}</p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-6">
-              <div className="flex items-center space-x-3">
-                <Mail className="text-blue-600 flex-shrink-0" size={20} />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-gray-500">Email</span>
-                  <input
-                    type="email"
-                    name="email"
-                    value={isEditing ? editData.email : profileData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={`text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="text-blue-600 flex-shrink-0" size={20} />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-gray-500">Telepon</span>
-                  <input
-                    type="tel"
-                    name="telepon"
-                    value={isEditing ? editData.telepon : profileData.telepon}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={`text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-3 lg:col-span-1 md:col-span-2">
-                <MapPin className="text-blue-600 flex-shrink-0" size={20} />
-                <div className="flex flex-col flex-1">
-                  <span className="text-xs font-medium text-gray-500">Alamat</span>
-                  <input
-                    type="text"
-                    name="alamat"
-                    value={isEditing ? editData.alamat : profileData.alamat}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    className={`text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0 w-full`}
-                  />
-                </div>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6">
+              <InfoField icon={Mail} label="Email" name="email" value={editData.email} onChange={handleInputChange} isEditing={isEditing} />
+              <InfoField icon={Phone} label="Telepon" name="telepon" value={editData.telepon} onChange={handleInputChange} isEditing={isEditing} />
+              <InfoField icon={MapPin} label="Alamat" name="alamat" value={editData.alamat} onChange={handleInputChange} isEditing={isEditing} className="md:col-span-2" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Academic Information */}
-      <div className="bg-white rounded-xl p-8 shadow-md border border-gray-200">
-        <h3 className="text-xl font-bold text-gray-900 mb-6">Informasi Akademik</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="flex items-center space-x-3">
-            <GraduationCap className="text-blue-600" size={20} />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500">Universitas</p>
-              <input
-                type="text"
-                name="universitas"
-                value={isEditing ? editData.universitas : profileData.universitas}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Briefcase className="text-blue-600" size={20} />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500">Jurusan</p>
-              <input
-                type="text"
-                name="jurusan"
-                value={isEditing ? editData.jurusan : profileData.jurusan}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Calendar className="text-blue-600" size={20} />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500">Angkatan</p>
-              <input
-                type="number"
-                name="angkatan"
-                value={isEditing ? editData.angkatan : profileData.angkatan}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                min="2000"
-                max="2030"
-                className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <UserRound className="text-blue-600" size={20} />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500">Dosen Pembimbing</p>
-              <input
-                type="text"
-                name="pembimbing"
-                value={isEditing ? editData.pembimbing : profileData.pembimbing}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Building2 className="text-blue-600" size={20} />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-gray-500">Divisi</p>
-              <input
-                type="text"
-                name="divisi"
-                value={isEditing ? editData.divisi : profileData.divisi}
-                onChange={handleInputChange}
-                disabled={!isEditing}
-                className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* KP Progress & Quick Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* KP Progress */}
-        <div className="bg-white rounded-xl p-8 shadow-md border border-gray-200 lg:col-span-2">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Progress Kerja Praktek</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Progress KP</span>
-              <span className="text-sm font-semibold text-blue-600">{progressPercentage}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Tanggal Mulai</p>
-                <p className="text-sm font-semibold text-gray-900">{profileData.tanggalMulai}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">Tanggal Selesai</p>
-                <p className="text-sm font-semibold text-gray-900">{profileData.tanggalSelesai}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 text-center">
-            <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Calendar className="text-blue-600" size={24} />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">45</div>
-            <div className="text-sm text-gray-500">Hari KP</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 text-center">
-            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <CircleCheck className="text-green-600" size={24} />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">42</div>
-            <div className="text-sm text-gray-500">Jurnal Disetujui</div>
-          </div>
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 text-center">
-            <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <TrendingUp className="text-purple-600" size={24} />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">95%</div>
-            <div className="text-sm text-gray-500">Kehadiran</div>
-          </div>
+      <div className="bg-white rounded-xl p-8 shadow-md border">
+        <h3 className="text-xl font-bold text-gray-900 mb-6">Informasi Akademik & KP</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InfoField icon={GraduationCap} label="Universitas" name="universitas" value={editData.universitas} onChange={handleInputChange} isEditing={isEditing} />
+          <InfoField icon={Briefcase} label="Jurusan" name="jurusan" value={editData.jurusan} onChange={handleInputChange} isEditing={isEditing} />
+          <InfoField icon={Calendar} label="Angkatan" name="angkatan" value={editData.angkatan} onChange={handleInputChange} isEditing={isEditing} type="number" />
+          <InfoField icon={Building2} label="Divisi KP" name="divisi" value={editData.divisi} onChange={handleInputChange} isEditing={isEditing} />
+          <InfoField icon={UserRound} label="Pembimbing Lapangan" name="pembimbing" value={editData.pembimbing} onChange={handleInputChange} isEditing={isEditing} className="md:col-span-2" />
+          <InfoField icon={Calendar} label="Tanggal Mulai KP" name="tanggalMulai" value={editData.tanggalMulai} onChange={handleInputChange} isEditing={isEditing} type="date" />
+          <InfoField icon={Calendar} label="Tanggal Selesai KP" name="tanggalSelesai" value={editData.tanggalSelesai} onChange={handleInputChange} isEditing={isEditing} type="date" />
         </div>
       </div>
     </div>
   );
 };
+
+// Komponen kecil untuk field info agar tidak repetitif
+const InfoField = ({ icon: Icon, label, name, value, onChange, isEditing, type = "text", className = "" }) => (
+  <div className={`flex items-center space-x-3 ${className}`}>
+    <Icon className="text-blue-600 flex-shrink-0" size={20} />
+    <div className="flex-1">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        disabled={!isEditing}
+        className={`w-full text-sm text-gray-900 font-medium bg-transparent border-b ${isEditing ? 'border-gray-300' : 'border-transparent'} focus:outline-none focus:border-blue-600 transition-colors p-0`}
+      />
+    </div>
+  </div>
+);
 
 export default Profile;

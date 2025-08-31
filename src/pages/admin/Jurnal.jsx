@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../../components/layout/Layout';
 import { 
   Search, 
@@ -15,79 +15,90 @@ import {
   Users
 } from 'lucide-react';
 
+const API_URL = 'http://localhost:4000/api/admin';
+
 const Jurnal = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterMahasiswa, setFilterMahasiswa] = useState('all');
+  const [jurnals, setJurnals] = useState([]);
+  const [mahasiswaList, setMahasiswaList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedJurnal, setSelectedJurnal] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [komentar, setKomentar] = useState('');
 
-  // Mock data jurnal
-  const [jurnals, setJurnals] = useState([
-    {
-      id: 1,
-      mahasiswa: 'Ahmad Fadillah',
-      nim: '2021001',
-      tanggal: '2024-12-10',
-      kegiatan: 'Mempelajari sistem informasi kepegawaian',
-      output: 'Memahami alur kerja sistem kepegawaian',
-      jamKerja: 8,
-      status: 'pending',
-      komentar: '',
-      hambatan: 'Kurang familiar dengan istilah teknis',
-      rencanaBesok: 'Lanjutkan pembelajaran dan praktik'
-    },
-    {
-      id: 2,
-      mahasiswa: 'Siti Nurhaliza',
-      nim: '2021002',
-      tanggal: '2024-12-10',
-      kegiatan: 'Membantu input data pegawai',
-      output: 'Berhasil input 50 data pegawai baru',
-      jamKerja: 7.5,
-      status: 'approved',
-      komentar: 'Kerja bagus, data tersimpan dengan baik',
-      hambatan: 'Tidak ada',
-      rencanaBesok: 'Input data pegawai lainnya'
-    },
-    {
-      id: 3,
-      mahasiswa: 'Budi Santoso',
-      nim: '2021003',
-      tanggal: '2024-12-09',
-      kegiatan: 'Meeting dengan tim IT',
-      output: 'Mendapatkan insight tentang pengembangan sistem',
-      jamKerja: 6,
-      status: 'rejected',
-      komentar: 'Jurnal terlalu singkat, perlu detail lebih lanjut',
-      hambatan: 'Meeting berlangsung singkat',
-      rencanaBesok: 'Dokumentasikan meeting dengan lebih detail'
+  // Fetch data from API
+  const fetchJurnalsAndUsers = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const [jurnalRes, userRes] = await Promise.all([
+        fetch(`${API_URL}/jurnals`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/users`, { headers: { 'Authorization': `Bearer ${token}` } })
+      ]);
+
+      if (!jurnalRes.ok) throw new Error('Gagal mengambil data jurnal');
+      if (!userRes.ok) throw new Error('Gagal mengambil data mahasiswa');
+
+      const jurnalData = await jurnalRes.json();
+      const userData = await userRes.json();
+
+      setJurnals(jurnalData);
+      setMahasiswaList(userData.map(user => ({ nama: user.nama_lengkap, nim: user.identifier })));
+
+    } catch (error) {
+      console.error(error);
+      Swal.fire('Error', error.message, 'error');
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  };
 
-  const [mahasiswaList] = useState([
-    'Ahmad Fadillah',
-    'Siti Nurhaliza', 
-    'Budi Santoso'
-  ]);
+  useEffect(() => {
+    fetchJurnalsAndUsers();
+  }, []);
 
-  const handleStatusChange = (jurnalId, newStatus, komentar = '') => {
-    setJurnals(prev => 
-      prev.map(jurnal => 
-        jurnal.id === jurnalId 
-          ? { ...jurnal, status: newStatus, komentar }
-          : jurnal
-      )
-    );
+  const handleStatusChange = async (jurnalId, newStatus) => {
+    const token = localStorage.getItem('token');
+    const result = await Swal.fire({
+      title: `Apakah Anda yakin ingin ${newStatus === 'approved' ? 'menyetujui' : 'menolak'} jurnal ini?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya',
+      cancelButtonText: 'Batal',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        try {
+          const response = await fetch(`${API_URL}/jurnals/${jurnalId}/status`, {
+            method: 'PATCH',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ status: newStatus, komentar: komentar })
+          });
+          if (!response.ok) throw new Error('Gagal memperbarui status jurnal');
+          return response.json();
+        } catch (error) {
+          Swal.showValidationMessage(`Request failed: ${error.message}`);
+        }
+      },
+    });
+
+    if (result.isConfirmed) {
+      Swal.fire('Berhasil!', `Jurnal berhasil di${newStatus === 'approved' ? 'setujui' : 'tolak'}.`, 'success');
+      fetchJurnalsAndUsers();
+    }
   };
 
   const filteredJurnals = jurnals.filter(jurnal => {
     const matchesSearch = 
-      jurnal.kegiatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      jurnal.mahasiswa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      jurnal.output.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || jurnal.status === filterStatus;
-    const matchesMahasiswa = filterMahasiswa === 'all' || jurnal.mahasiswa === filterMahasiswa;
+      (jurnal.kegiatan && jurnal.kegiatan.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (jurnal.nama_lengkap && jurnal.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (jurnal.nim && jurnal.nim.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesStatus = filterStatus === 'all' || (jurnal.status && jurnal.status.toLowerCase() === filterStatus);
+    const matchesMahasiswa = filterMahasiswa === 'all' || (jurnal.nama_lengkap && jurnal.nama_lengkap === filterMahasiswa);
     return matchesSearch && matchesStatus && matchesMahasiswa;
   });
 
@@ -104,23 +115,34 @@ const Jurnal = () => {
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'approved':
-        return <CheckCircle className="text-green-500" size={16} />;
-      case 'pending':
-        return <Clock className="text-yellow-500" size={16} />;
-      case 'rejected':
-        return <XCircle className="text-red-500" size={16} />;
-      default:
-        return null;
-    }
-  };
-
   const openDetail = (jurnal) => {
     setSelectedJurnal(jurnal);
     setShowDetail(true);
   };
+  
+  const handleApprove = (jurnalId) => handleStatusChange(jurnalId, 'approved');
+  const handleReject = async (jurnalId) => {
+    const { value: text } = await Swal.fire({
+      input: 'textarea',
+      inputLabel: 'Tulis komentar untuk menolak jurnal',
+      inputPlaceholder: 'Masukkan alasan penolakan...',
+      inputAttributes: { 'aria-label': 'Tulis alasan penolakan' },
+      showCancelButton: true,
+      confirmButtonText: 'Tolak',
+      cancelButtonText: 'Batal',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Alasan penolakan tidak boleh kosong!'
+        }
+      }
+    });
+
+    if (text) {
+      setKomentar(text);
+      handleStatusChange(jurnalId, 'rejected', text);
+    }
+  };
+
 
   return (
     <div className="space-y-8 p-6 md:p-8">
@@ -171,7 +193,7 @@ const Jurnal = () => {
             >
               <option value="all">Semua Mahasiswa</option>
               {mahasiswaList.map((mahasiswa, index) => (
-                <option key={index} value={mahasiswa}>{mahasiswa}</option>
+                <option key={index} value={mahasiswa.nama}>{mahasiswa.nama}</option>
               ))}
             </select>
           </div>
@@ -186,7 +208,9 @@ const Jurnal = () => {
         </div>
         
         <div className="divide-y divide-gray-200">
-          {filteredJurnals.length > 0 ? (
+          {isLoading ? (
+            <div className="text-center p-12 text-gray-500">Memuat data jurnal...</div>
+          ) : filteredJurnals.length > 0 ? (
             filteredJurnals.map((jurnal) => (
               <div key={jurnal.id} className="p-6">
                 <div className="flex items-start justify-between">
@@ -194,7 +218,7 @@ const Jurnal = () => {
                     <div className="flex items-center space-x-3 mb-3">
                       <div className="flex items-center space-x-2">
                         <User size={16} className="text-gray-400" />
-                        <span className="text-sm font-medium text-gray-900">{jurnal.mahasiswa}</span>
+                        <span className="text-sm font-medium text-gray-900">{jurnal.nama_lengkap}</span>
                         <span className="text-sm text-gray-500">({jurnal.nim})</span>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -210,7 +234,7 @@ const Jurnal = () => {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Clock size={16} className="text-gray-400" />
-                        <span className="text-sm text-gray-600">{jurnal.jamKerja} jam</span>
+                        <span className="text-sm text-gray-600">{jurnal.jam_kerja} jam</span>
                       </div>
                       {getStatusBadge(jurnal.status)}
                     </div>
@@ -222,7 +246,7 @@ const Jurnal = () => {
                       </div>
                       <div>
                         <h4 className="font-medium text-gray-900 mb-1">Output/Hasil:</h4>
-                        <p className="text-gray-700">{jurnal.output}</p>
+                        <p className="text-gray-700">{jurnal.deskripsi}</p>
                       </div>
                     </div>
                   </div>
@@ -234,16 +258,22 @@ const Jurnal = () => {
                     >
                       <Eye size={16} />
                     </button>
-                    {jurnal.status === 'pending' && (
+                    {(!jurnal.status || jurnal.status.toLowerCase() === 'pending') && (
                       <>
-                        <button 
-                          onClick={() => handleStatusChange(jurnal.id, 'approved', 'Jurnal disetujui')}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleApprove(jurnal.id);
+                          }}
                           className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
                         >
                           <CheckCircle size={16} />
                         </button>
-                        <button 
-                          onClick={() => handleStatusChange(jurnal.id, 'rejected', 'Jurnal ditolak, perlu perbaikan')}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleReject(jurnal.id);
+                          }}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           <XCircle size={16} />
@@ -268,7 +298,6 @@ const Jurnal = () => {
           )}
         </div>
       </div>
-
       {/* Jurnal Detail Modal */}
       {showDetail && selectedJurnal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -289,7 +318,7 @@ const Jurnal = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Mahasiswa</label>
-                  <p className="text-gray-900">{selectedJurnal.mahasiswa}</p>
+                  <p className="text-gray-900 font-semibold">{selectedJurnal.nama_lengkap}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">NIM</label>
@@ -298,12 +327,17 @@ const Jurnal = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
                   <p className="text-gray-900">
-                    {new Date(selectedJurnal.tanggal).toLocaleDateString('id-ID')}
+                    {new Date(selectedJurnal.tanggal).toLocaleDateString('id-ID', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
                   </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Jam Kerja</label>
-                  <p className="text-gray-900">{selectedJurnal.jamKerja} jam</p>
+                  <p className="text-gray-900">{selectedJurnal.jam_kerja} jam</p>
                 </div>
               </div>
               
@@ -313,8 +347,8 @@ const Jurnal = () => {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Output/Hasil</label>
-                <p className="text-gray-900">{selectedJurnal.output}</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                <p className="text-gray-900">{selectedJurnal.deskripsi}</p>
               </div>
               
               {selectedJurnal.hambatan && (
@@ -324,27 +358,27 @@ const Jurnal = () => {
                 </div>
               )}
               
-              {selectedJurnal.rencanaBesok && (
+              {selectedJurnal.rencana_selanjutnya && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Rencana Besok</label>
-                  <p className="text-gray-900">{selectedJurnal.rencanaBesok}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rencana Selanjutnya</label>
+                  <p className="text-gray-900">{selectedJurnal.rencana_selanjutnya}</p>
                 </div>
               )}
               
-              {selectedJurnal.komentar && (
+              {selectedJurnal.komentar_admin && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Komentar Admin</label>
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedJurnal.komentar}</p>
+                  <p className="text-blue-800 bg-blue-50 p-3 rounded-lg">{selectedJurnal.komentar_admin}</p>
                 </div>
               )}
             </div>
             
-            {selectedJurnal.status === 'pending' && (
+            {(selectedJurnal.status === 'pending' || selectedJurnal.status === 'rejected') && (
               <div className="p-6 border-t border-gray-200 bg-gray-50">
                 <div className="flex space-x-3">
                   <button
-                    onClick={() => {
-                      handleStatusChange(selectedJurnal.id, 'approved', 'Jurnal disetujui');
+                    onClick={async () => {
+                      await handleApprove(selectedJurnal.id);
                       setShowDetail(false);
                     }}
                     className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
@@ -353,8 +387,8 @@ const Jurnal = () => {
                     Approve
                   </button>
                   <button
-                    onClick={() => {
-                      handleStatusChange(selectedJurnal.id, 'rejected', 'Jurnal ditolak, perlu perbaikan');
+                    onClick={async () => {
+                      await handleReject(selectedJurnal.id);
                       setShowDetail(false);
                     }}
                     className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors"

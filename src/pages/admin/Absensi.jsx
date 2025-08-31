@@ -1,361 +1,372 @@
-import React, { useState } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Calendar, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle,
-  Download,
-  TrendingUp,
-  Users,
-  BarChart3,
-  UserRound
-} from 'lucide-react';
-import Layout from '../../components/layout/Layout'; // Impor Layout
+import React, { useState, useEffect } from 'react';
+import { Search, Calendar, CheckCircle, XCircle, AlertCircle, Download, Users, UserRound, Hand, Eye } from 'lucide-react';
+import Swal from 'sweetalert2';
+
+const API_URL = 'http://localhost:4000/api/admin';
+
+// Helper function untuk format tanggal ke format YYYY-MM-DD
+const formatDate = (date) => date.toISOString().split('T')[0];
+
+// Helper function untuk mendapatkan tanggal-tanggal terakhir
+const getLastNDays = (n) => {
+    const dates = [];
+    for (let i = 0; i < n; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dates.push(formatDate(d));
+    }
+    return dates;
+};
 
 const Absensi = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterMahasiswa, setFilterMahasiswa] = useState('all');
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterDate, setFilterDate] = useState(formatDate(new Date()));
+    const [attendanceData, setAttendanceData] = useState([]);
+    const [izinData, setIzinData] = useState([]); // State baru untuk data izin
+    const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingIzin, setIsLoadingIzin] = useState(true); // State loading baru untuk izin
+    const [viewMode, setViewMode] = useState('singleDay');
 
-  // Mock data absensi
-  const [attendanceData] = useState([
-    {
-      id: 1,
-      mahasiswa: 'Ahmad Fadillah',
-      nim: '2021001',
-      tanggal: '2024-12-10',
-      checkIn: '08:00',
-      checkOut: '17:00',
-      totalHours: 9,
-      status: 'hadir',
-      keterangan: 'Tepat waktu'
-    },
-    {
-      id: 2,
-      mahasiswa: 'Siti Nurhaliza',
-      nim: '2021002',
-      tanggal: '2024-12-10',
-      checkIn: '08:15',
-      checkOut: '16:45',
-      totalHours: 8.5,
-      status: 'terlambat',
-      keterangan: 'Terlambat 15 menit'
-    },
-    {
-      id: 3,
-      mahasiswa: 'Budi Santoso',
-      nim: '2021003',
-      tanggal: '2024-12-10',
-      checkIn: null,
-      checkOut: null,
-      totalHours: 0,
-      status: 'tidak_hadir',
-      keterangan: 'Izin sakit'
-    },
-    {
-      id: 4,
-      mahasiswa: 'Ahmad Fadillah',
-      nim: '2021001',
-      tanggal: '2024-12-09',
-      checkIn: '08:00',
-      checkOut: '17:30',
-      totalHours: 9.5,
-      status: 'hadir',
-      keterangan: 'Lembur 30 menit'
-    }
-  ]);
+    // Fungsi untuk mengambil data absensi satu hari
+    const fetchSingleDayData = async (date) => {
+        setIsLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/absensi?tanggal=${date}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Gagal memuat data absensi');
+            const data = await response.json();
+            setAttendanceData(data);
+        } catch (error) {
+            Swal.fire('Error', error.message, 'error');
+            setAttendanceData([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    // Fungsi untuk mengambil data izin dari endpoint history
+    const fetchIzinData = async () => {
+        setIsLoadingIzin(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:4000/api/absensi/izin/history/all', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Gagal memuat data izin');
+            const data = await response.json();
+            setIzinData(Array.isArray(data) ? data : data.data || []);
+        } catch (error) {
+            Swal.fire('Error', error.message, 'error');
+            setIzinData([]);
+        } finally {
+            setIsLoadingIzin(false);
+        }
+    };
 
-  const [mahasiswaList] = useState([
-    'Ahmad Fadillah',
-    'Siti Nurhaliza', 
-    'Budi Santoso'
-  ]);
+    // Fungsi untuk mengambil data absensi 3 hari ke belakang
+    const fetchHistoryData = async () => {
+        setIsLoading(true);
+        const dates = getLastNDays(3);
+        const token = localStorage.getItem('token');
+        try {
+            const promises = dates.map(date =>
+                fetch(`${API_URL}/absensi?tanggal=${date}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }).then(res => res.json())
+            );
+            const allData = await Promise.all(promises);
+            const combinedData = allData.flatMap((data, index) =>
+                data.map(item => ({ ...item, tanggal: dates[index] }))
+            );
+            setAttendanceData(combinedData);
+        } catch (error) {
+            Swal.fire('Error', 'Gagal memuat riwayat absensi', 'error');
+            setAttendanceData([]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-  const filteredAttendance = attendanceData.filter(attendance => {
-    const matchesSearch = 
-      attendance.mahasiswa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      attendance.nim.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || attendance.status === filterStatus;
-    const matchesMahasiswa = filterMahasiswa === 'all' || attendance.mahasiswa === filterMahasiswa;
-    const matchesDate = filterDate === '' || attendance.tanggal === filterDate;
-    return matchesSearch && matchesStatus && matchesMahasiswa && matchesDate;
-  });
+    useEffect(() => {
+        if (viewMode === 'singleDay' && filterDate) {
+            fetchSingleDayData(filterDate);
+        } else if (viewMode === 'history') {
+            fetchHistoryData();
+        }
+        // Panggil fungsi fetchIzinData saat komponen dimuat
+        fetchIzinData();
+    }, [filterDate, viewMode]);
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'hadir':
-        return <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Hadir</span>;
-      case 'terlambat':
-        return <span className="px-3 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700 rounded-full">Terlambat</span>;
-      case 'tidak_hadir':
-        return <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-full">Tidak Hadir</span>;
-      default:
-        return null;
-    }
-  };
+    const handleDateChange = (e) => {
+        setFilterDate(e.target.value);
+        setViewMode('singleDay');
+    };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'hadir':
-        return <CheckCircle className="text-green-500" size={16} />;
-      case 'terlambat':
-        return <AlertCircle className="text-yellow-500" size={16} />;
-      case 'tidak_hadir':
-        return <XCircle className="text-red-500" size={16} />;
-      default:
-        return null;
-    }
-  };
+    const handleExport = async () => {
+        if (!filterDate) {
+            Swal.fire('Error', 'Silakan pilih tanggal terlebih dahulu.', 'error');
+            return;
+        }
+        Swal.fire({
+            title: 'Mengekspor Laporan Absensi',
+            text: 'Mohon tunggu sebentar...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_URL}/absensi/export?tanggal=${filterDate}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.message || 'Gagal mengekspor data');
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `laporan-absensi-${filterDate}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            Swal.close();
+        } catch (error) {
+            Swal.fire('Error', error.message, 'error');
+        }
+    };
 
-  // Calculate statistics
-  const totalMahasiswa = mahasiswaList.length;
-  const hadirHariIni = attendanceData.filter(a => a.tanggal === filterDate && a.status === 'hadir').length;
-  const terlambatHariIni = attendanceData.filter(a => a.tanggal === filterDate && a.status === 'terlambat').length;
-  const tidakHadirHariIni = attendanceData.filter(a => a.tanggal === filterDate && a.status === 'tidak_hadir').length;
-  const tingkatKehadiran = totalMahasiswa > 0 ? Math.round((hadirHariIni / totalMahasiswa) * 100) : 0;
+    const getStatusBadge = (status) => {
+        switch (status) {
+            case 'HADIR': return <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Hadir</span>;
+            case 'TERLAMBAT': return <span className="px-3 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700 rounded-full">Terlambat</span>;
+            case 'TIDAK_HADIR': return <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-full">Tidak Hadir</span>;
+            default: return null;
+        }
+    };
+    
+    // Badge untuk status Izin
+    const getIzinStatusBadge = (status) => {
+        switch (status) {
+            case 'DISETUJUI': return <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Disetujui</span>;
+            case 'DITOLAK': return <span className="px-3 py-1 text-xs font-semibold bg-red-100 text-red-700 rounded-full">Ditolak</span>;
+            case 'PENDING': return <span className="px-3 py-1 text-xs font-semibold bg-yellow-100 text-yellow-700 rounded-full">Pending</span>;
+            default: return null;
+        }
+    };
 
-  return (
-    <div className="space-y-8 p-6 md:p-8">
-      
-      {/* Header Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg p-6 flex flex-col md:flex-row items-center justify-between border border-gray-200">
-        <div className="md:mr-8 text-center md:text-left">
-          <h1 className="text-3xl font-bold mb-1">Monitoring Absensi</h1>
-          <p className="text-blue-100 text-lg">
-            Pantau kehadiran mahasiswa kerja praktek
-          </p>
+    const filteredAttendance = attendanceData.filter(att =>
+        (att.nama_lengkap && att.nama_lengkap.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (att.nim && att.nim.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    const stats = {
+        hadir: attendanceData.filter(a => a.status === 'HADIR').length,
+        terlambat: attendanceData.filter(a => a.status === 'TERLAMBAT').length,
+        tidakHadir: attendanceData.filter(a => a.status === 'TIDAK_HADIR').length
+    };
+
+    const groupedData = filteredAttendance.reduce((acc, curr) => {
+        const date = curr.tanggal;
+        if (!acc[date]) {
+            acc[date] = [];
+        }
+        acc[date].push(curr);
+        return acc;
+    }, {});
+
+    const sortedDates = Object.keys(groupedData).sort((a, b) => new Date(b) - new Date(a));
+
+    return (
+        <div className="space-y-8 p-6 md:p-8">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Monitoring Absensi</h1>
+                    <p className="text-gray-600 mt-1">Pantau kehadiran mahasiswa kerja praktek</p>
+                </div>
+                <button onClick={handleExport} className="flex items-center space-x-2 text-white bg-blue-600 px-4 py-2 rounded-lg font-semibold">
+                    <Download size={18} /> <span>Export Laporan</span>
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <StatCard icon={CheckCircle} title="Hadir" value={stats.hadir} color="green" />
+                <StatCard icon={AlertCircle} title="Terlambat" value={stats.terlambat} color="yellow" />
+                <StatCard icon={XCircle} title="Tidak Hadir" value={stats.tidakHadir} color="red" />
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-md border">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <input type="text" placeholder="Cari mahasiswa (nama atau NIM)..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 pr-4 py-2 border rounded-lg w-full" />
+                    </div>
+                    <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <input type="date" value={filterDate} onChange={handleDateChange} className="pl-10 pr-4 py-2 border rounded-lg w-full" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Tabel Riwayat Absensi */}
+            <div className="bg-white rounded-xl shadow-md border overflow-hidden">
+                <div className="p-6 border-b">
+                    <h3 className="text-lg font-semibold">
+                        {viewMode === 'singleDay'
+                            ? `Data Absensi - ${new Date(filterDate).toLocaleDateString('id-ID', { dateStyle: 'full' })}`
+                            : 'Riwayat Absensi 3 Hari Terakhir'}
+                    </h3>
+                </div>
+                <div className="overflow-x-auto">
+                    {isLoading ? (
+                        <div className="text-center p-6">Memuat data...</div>
+                    ) : (
+                        viewMode === 'singleDay' ? (
+                            <AttendanceTable data={filteredAttendance} getStatusBadge={getStatusBadge} />
+                        ) : (
+                            sortedDates.length > 0 ? (
+                                sortedDates.map(date => (
+                                    <div key={date}>
+                                        <h4 className="bg-gray-50 text-gray-500 font-bold px-6 py-2 border-b">
+                                            {new Date(date).toLocaleDateString('id-ID', { dateStyle: 'full' })}
+                                        </h4>
+                                        <AttendanceTable data={groupedData[date]} getStatusBadge={getStatusBadge} />
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center p-6 text-gray-500">Tidak ada data absensi untuk 3 hari terakhir.</div>
+                            )
+                        )
+                    )}
+                </div>
+            </div>
+            
+            {/* Tabel Riwayat Izin (BARU) */}
+            <div className="bg-white rounded-xl shadow-md border overflow-hidden mt-8">
+                <div className="p-6 border-b">
+                    <h3 className="text-lg font-semibold">Riwayat Pengajuan Izin</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    {isLoadingIzin ? (
+                        <div className="text-center p-6">Memuat data izin...</div>
+                    ) : (
+                        izinData.length > 0 ? (
+                            <IzinTable data={izinData} />
+                        ) : (
+                            <div className="text-center p-6 text-gray-500">Tidak ada pengajuan izin.</div>
+                        )
+                    )}
+                </div>
+            </div>
         </div>
-        <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 mt-4 md:mt-0">
-          <Users className="w-10 h-10 text-white" />
-        </div>
-      </div>
+    );
+};
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 transition-shadow hover:shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total Mahasiswa</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{totalMahasiswa}</p>
-            </div>
-            <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-              <Users className="text-blue-600" size={28} />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 transition-shadow hover:shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Hadir Hari Ini</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">{hadirHariIni}</p>
-            </div>
-            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="text-green-600" size={28} />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 transition-shadow hover:shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Terlambat</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-1">{terlambatHariIni}</p>
-            </div>
-            <div className="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center">
-              <AlertCircle className="text-yellow-600" size={28} />
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 transition-shadow hover:shadow-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Tingkat Kehadiran</p>
-              <p className="text-3xl font-bold text-blue-600 mt-1">{tingkatKehadiran}%</p>
-            </div>
-            <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
-              <TrendingUp className="text-blue-600" size={28} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Filter */}
-      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Cari mahasiswa..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full transition-colors"
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-            />
-          </div>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-          >
-            <option value="all">Semua Status</option>
-            <option value="hadir">Hadir</option>
-            <option value="terlambat">Terlambat</option>
-            <option value="tidak_hadir">Tidak Hadir</option>
-          </select>
-          <select
-            value={filterMahasiswa}
-            onChange={(e) => setFilterMahasiswa(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-          >
-            <option value="all">Semua Mahasiswa</option>
-            {mahasiswaList.map((mahasiswa, index) => (
-              <option key={index} value={mahasiswa}>{mahasiswa}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Attendance Table */}
-      <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">Data Absensi</h3>
-              <p className="text-sm text-gray-500">Total {filteredAttendance.length} data</p>
-            </div>
-            <button className="flex items-center space-x-2 text-white bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 rounded-lg font-semibold hover:opacity-90 transition-colors">
-              <Download size={18} />
-              <span>Export Laporan</span>
-            </button>
-          </div>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+const AttendanceTable = ({ data, getStatusBadge }) => {
+    return (
+        <table className="min-w-full divide-y">
             <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Mahasiswa
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Tanggal
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Masuk
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Keluar
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Total Jam
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Keterangan
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAttendance.map((attendance) => (
-                <tr key={attendance.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10">
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <UserRound className="text-blue-600" size={20} />
-                        </div>
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{attendance.mahasiswa}</div>
-                        <div className="text-sm text-gray-500">{attendance.nim}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(attendance.tanggal).toLocaleDateString('id-ID', {
-                      weekday: 'short',
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="flex items-center space-x-1">
-                      <Clock size={16} className="text-gray-400" />
-                      <span>{attendance.checkIn || '-'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <div className="flex items-center space-x-1">
-                      <Clock size={16} className="text-gray-400" />
-                      <span>{attendance.checkOut || '-'}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {attendance.totalHours > 0 ? `${attendance.totalHours} jam` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(attendance.status)}
-                      {getStatusBadge(attendance.status)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {attendance.keterangan}
-                  </td>
+                <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Mahasiswa</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Masuk</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Keluar</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Status</th>
                 </tr>
-              ))}
+            </thead>
+            <tbody className="bg-white divide-y">
+                {data.length > 0 ? (
+                    data.map((att) => (
+                        <tr key={att.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                    <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center"><UserRound className="text-blue-600" size={20} /></div>
+                                    <div className="ml-4">
+                                        <div className="text-sm font-medium">{att.nama_lengkap || att.nim}</div>
+                                        <div className="text-sm text-gray-500">{att.nim}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">{att.waktu_masuk || '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">{att.waktu_keluar || '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(att.status)}</td>
+                        </tr>
+                    ))
+                ) : (
+                    <tr><td colSpan="4" className="text-center p-6 text-gray-500">Tidak ada data absensi.</td></tr>
+                )}
             </tbody>
-          </table>
-          
-          {filteredAttendance.length === 0 && (
-            <div className="p-12 text-center text-gray-500">
-              <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-lg font-medium text-gray-900">Tidak ada data absensi</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                {searchTerm || filterStatus !== 'all' || filterMahasiswa !== 'all' || filterDate !== ''
-                  ? 'Coba ubah filter atau kata kunci pencarian'
-                  : 'Belum ada data absensi untuk tanggal yang dipilih'
-                }
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+        </table>
+    );
+};
 
-      {/* Monthly Chart Placeholder */}
-      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-gray-900">Grafik Kehadiran Bulanan</h3>
-          <button className="text-sm text-blue-600 hover:text-blue-700 font-semibold">
-            Lihat Detail
-          </button>
+// Helper untuk format tanggal ISO ke lokal
+const formatDateTime = (isoString) => {
+    if (!isoString) return '-';
+    const date = new Date(isoString);
+    return date.toLocaleString('id-ID', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+};
+
+// Komponen tabel untuk Izin (UPDATE: format tanggal)
+const IzinTable = ({ data }) => {
+    return (
+        <table className="min-w-full divide-y">
+            <thead className="bg-gray-50">
+                <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">User ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">NIM</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Alasan</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Tanggal Izin</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold uppercase">Created At</th>
+                </tr>
+            </thead>
+            <tbody className="bg-white divide-y">
+                {data.length > 0 ? (
+                    data.map((izin) => (
+                        <tr key={izin.id}>
+                            <td className="px-6 py-4">{izin.id}</td>
+                            <td className="px-6 py-4">{izin.user_id}</td>
+                            <td className="px-6 py-4">{izin.nim}</td>
+                            <td className="px-6 py-4">{izin.email}</td>
+                            <td className="px-6 py-4">{izin.alasan}</td>
+                            <td className="px-6 py-4">{formatDateTime(izin.tanggal_izin)}</td>
+                            <td className="px-6 py-4">{formatDateTime(izin.created_at)}</td>
+                        </tr>
+                    ))
+                ) : (
+                    <tr><td colSpan="7" className="text-center p-6 text-gray-500">Tidak ada data pengajuan izin.</td></tr>
+                )}
+            </tbody>
+        </table>
+    );
+};
+
+const StatCard = ({ icon: Icon, title, value, color }) => {
+    const colors = {
+        green: 'text-green-600 bg-green-100',
+        yellow: 'text-yellow-600 bg-yellow-100',
+        red: 'text-red-600 bg-red-100',
+    };
+    return (
+        <div className="bg-white rounded-xl p-6 shadow-md border">
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-sm font-medium text-gray-500">{title}</p>
+                    <p className={`text-3xl font-bold text-${color}-600 mt-1`}>{value}</p>
+                </div>
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center ${colors[color]}`}>
+                    <Icon size={28} />
+                </div>
+            </div>
         </div>
-        <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-          <div className="text-center">
-            <BarChart3 className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-            <p className="text-sm text-gray-500">Grafik kehadiran akan ditampilkan di sini</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Absensi;

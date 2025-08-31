@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Lock, GraduationCap, Building2, Eye, EyeOff } from 'lucide-react';
+import { Building2, Eye, EyeOff } from 'lucide-react';
+import Swal from 'sweetalert2';
+
+// Ganti URL ini sesuai dengan alamat backend Anda
+const API_URL = 'http://localhost:4000/api/auth';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [userType, setUserType] = useState('mahasiswa');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
+    identifier: '',
     password: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -21,34 +25,59 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    // Akun admin yang sudah ditentukan (hardcoded)
-    const defaultAccounts = [
-      { username: 'admin', password: '123', userType: 'admin' }
-    ];
+    const payload = {
+      identifier: formData.identifier,
+      password: formData.password,
+    };
 
-    // Ambil akun mahasiswa dari localStorage (jika ada)
-    const storedAccounts = JSON.parse(localStorage.getItem('accounts')) || [];
-    
-    // Gabungkan akun default dengan akun yang terdaftar
-    const allAccounts = [...defaultAccounts, ...storedAccounts];
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-    // Cari akun yang cocok dengan username dan password yang diinput
-    const foundAccount = allAccounts.find(
-      account => account.username === formData.username && account.password === formData.password
-    );
+      const data = await response.json();
 
-    if (foundAccount) {
-      // Simpan data user yang berhasil login
-      localStorage.setItem('currentUser', JSON.stringify(foundAccount));
-
-      if (foundAccount.userType === 'mahasiswa') {
-        navigate('/student/dashboard');
-      } else {
-        navigate('/admin/dashboard');
+      if (!response.ok) {
+        throw new Error(data.message || 'Terjadi kesalahan');
       }
-    } else {
-      alert('Username atau password salah. Silakan coba lagi.');
+      
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Login Berhasil!',
+        text: `Selamat datang, ${data.user.identifier}`,
+        timer: 1500,
+        showConfirmButton: false,
+        timerProgressBar: true,
+      }).then(() => {
+        // Navigasi dilakukan berdasarkan peran yang diterima dari backend
+        if (data.user.role === 'MAHASISWA') {
+          navigate('/student/dashboard');
+        } else if (data.user.role === 'ADMIN') {
+          navigate('/admin/dashboard');
+        } else {
+          // Navigasi default jika peran tidak dikenali
+          navigate('/');
+        }
+      });
+
+    } catch (err) {
+      console.error('Login failed:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Login Gagal',
+        text: err.message,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -57,7 +86,6 @@ const Login = () => {
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-sm border border-gray-200">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            {/* Mengganti img dengan ikon Building2 */}
             <Building2 className="h-12 w-12 text-blue-600" />
           </div>
           <h1 className="text-4xl font-extrabold text-blue-900">
@@ -66,42 +94,15 @@ const Login = () => {
           <p className="text-sm text-gray-600 mt-1">Jurnal Kerja Praktek</p>
         </div>
 
-        <div className="flex bg-gray-100 rounded-lg p-1.5 mb-6">
-          <button
-            type="button"
-            onClick={() => setUserType('mahasiswa')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-md transition-all duration-300 ${
-              userType === 'mahasiswa'
-                ? 'bg-white text-blue-600 shadow'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <GraduationCap size={20} />
-            <span className="font-semibold text-sm">Mahasiswa</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserType('admin')}
-            className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-md transition-all duration-300 ${
-              userType === 'admin'
-                ? 'bg-white text-blue-600 shadow'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Building2 size={20} />
-            <span className="font-semibold text-sm">Admin</span>
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="relative">
             <label className="text-sm text-blue-900 font-medium mb-1 block">
-              {userType === 'mahasiswa' ? 'NIM' : 'Username'}
+              Username atau NIM
             </label>
             <input
               type="text"
-              name="username"
-              value={formData.username}
+              name="identifier"
+              value={formData.identifier}
               onChange={handleInputChange}
               required
               className="w-full py-2 border-b-2 border-gray-300 focus:outline-none focus:border-blue-500 transition-colors"
@@ -131,25 +132,24 @@ const Login = () => {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+            disabled={isLoading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
           >
-            LOGIN
+            {isLoading ? 'Logging In...' : 'LOGIN'}
           </button>
         </form>
 
-        {userType !== 'admin' && (
-          <div className="mt-6 text-center text-sm">
-            <p className="text-gray-600">
-              Belum punya akun?{' '}
-              <button
-                onClick={() => navigate('/register')}
-                className="text-blue-600 font-medium hover:underline"
-              >
-                Daftar sekarang
-              </button>
-            </p>
-          </div>
-        )}
+        <div className="mt-6 text-center text-sm">
+          <p className="text-gray-600">
+            Belum punya akun?{' '}
+            <button
+              onClick={() => navigate('/register')}
+              className="text-blue-600 font-medium hover:underline"
+            >
+              Daftar sekarang
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );
