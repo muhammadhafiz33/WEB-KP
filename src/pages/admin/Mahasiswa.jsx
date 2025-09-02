@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Eye, Users, UserRound, Mail, Phone, GraduationCap, Building, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, Eye, Users, UserRound, Mail, Phone, GraduationCap, Plus, Edit, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 const API_URL = 'http://localhost:4000/api/admin';
@@ -31,6 +31,42 @@ const Mahasiswa = () => {
   useEffect(() => {
     fetchMahasiswa();
   }, []);
+
+  const handleToggleActive = async (nim, isActive) => {
+    const action = isActive ? 'menonaktifkan' : 'mengaktifkan';
+    const confirmText = isActive ? 'Yakin ingin menonaktifkan akun ini?' : 'Yakin ingin mengaktifkan kembali akun ini?';
+
+    Swal.fire({
+      title: 'Konfirmasi',
+      text: confirmText,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: isActive ? '#d33' : '#3085d6',
+      cancelButtonColor: '#aaa',
+      confirmButtonText: isActive ? 'Ya, Nonaktifkan' : 'Ya, Aktifkan',
+      cancelButtonText: 'Batal'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${API_URL}/users/${nim}/status`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ is_active: !isActive })
+          });
+          if (!response.ok) throw new Error('Gagal memperbarui status mahasiswa');
+          
+          Swal.fire('Berhasil!', `Status akun mahasiswa telah diperbarui.`, 'success');
+          fetchMahasiswa(); // Refresh list
+        } catch (error) {
+          Swal.fire('Error', error.message, 'error');
+        }
+      }
+    });
+  };
 
   const handleDelete = (mahasiswaId, nama) => {
     Swal.fire({
@@ -107,6 +143,14 @@ const Mahasiswa = () => {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2 ml-4">
+                    {/* Tombol untuk mengaktifkan/menonaktifkan */}
+                    <button 
+                      onClick={() => handleToggleActive(mahasiswa.nim, mahasiswa.is_active)} 
+                      className={`p-2 rounded-md ${mahasiswa.is_active ? 'text-green-600 hover:bg-green-100' : 'text-red-600 hover:bg-red-100'}`} 
+                      title={mahasiswa.is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun'}
+                    >
+                      {mahasiswa.is_active ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                    </button>
                     <button onClick={() => navigate(`/admin/mahasiswa/${mahasiswa.nim}`)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-md" title="Lihat Profile">
                       <Eye size={20} />
                     </button>

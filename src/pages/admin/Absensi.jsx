@@ -139,6 +139,38 @@ const Absensi = () => {
         }
     };
 
+    const handleExportIzin = async () => {
+        Swal.fire({
+            title: 'Mengekspor Riwayat Izin',
+            text: 'Mohon tunggu sebentar...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        try {
+            const token = localStorage.getItem('token');
+            // UBAH BARIS INI
+            const response = await fetch('http://localhost:4000/api/absensi/izin/export/pdf', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.message || 'Gagal mengekspor riwayat izin');
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `riwayat-izin.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+            Swal.close();
+        } catch (error) {
+            Swal.fire('Error', error.message, 'error');
+        }
+    };
+
     const getStatusBadge = (status) => {
         switch (status) {
             case 'HADIR': return <span className="px-3 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-full">Hadir</span>;
@@ -246,8 +278,11 @@ const Absensi = () => {
             
             {/* Tabel Riwayat Izin (BARU) */}
             <div className="bg-white rounded-xl shadow-md border overflow-hidden mt-8">
-                <div className="p-6 border-b">
+                <div className="p-6 border-b flex items-center justify-between">
                     <h3 className="text-lg font-semibold">Riwayat Pengajuan Izin</h3>
+                    <button onClick={handleExportIzin} className="flex items-center space-x-2 text-white bg-blue-600 px-4 py-2 rounded-lg font-semibold">
+                        <Download size={18} /> <span>Export PDF</span>
+                    </button>
                 </div>
                 <div className="overflow-x-auto">
                     {isLoadingIzin ? (
@@ -341,7 +376,7 @@ const IzinTable = ({ data }) => {
                         </tr>
                     ))
                 ) : (
-                    <tr><td colSpan="7" className="text-center p-6 text-gray-500">Tidak ada data pengajuan izin.</td></tr>
+                    <tr><td colSpan="7" className="text-center p-6 text-gray-500">Tidak ada pengajuan izin.</td></tr>
                 )}
             </tbody>
         </table>

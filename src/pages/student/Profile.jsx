@@ -16,6 +16,7 @@ import {
 import Swal from 'sweetalert2';
 
 const API_URL = 'http://localhost:4000/api/profile/me';
+const BASE_URL = 'http://localhost:4000'; // Tambahkan base URL
 
 // Fungsi helper untuk memformat tanggal
 const formatDateForInput = (dateString) => {
@@ -118,6 +119,17 @@ const Profile = () => {
     setIsEditing(false);
   };
 
+  // Fungsi helper untuk mendapatkan URL gambar yang benar
+  const getImageUrl = (fotoUrl) => {
+    if (!fotoUrl) return null;
+    // Jika sudah blob URL (untuk preview), return as is
+    if (fotoUrl.startsWith('blob:')) return fotoUrl;
+    // Jika URL relatif dari database, gabungkan dengan base URL
+    if (fotoUrl.startsWith('/uploads/')) return `${BASE_URL}${fotoUrl}`;
+    // Jika sudah URL lengkap, return as is
+    return fotoUrl;
+  };
+
   if (isLoading) {
     return <div className="text-center p-10">Memuat profil...</div>;
   }
@@ -154,11 +166,16 @@ const Profile = () => {
           {/* Profile Photo & Info */}
           <div className="flex-shrink-0 relative">
             <div className="w-36 h-36 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-5xl font-bold">
-              {editData.foto ? (
+              {getImageUrl(editData.foto) ? (
                 <img 
-                  src={editData.foto} 
+                  src={getImageUrl(editData.foto)} 
                   alt="Profile" 
                   className="w-36 h-36 rounded-full object-cover"
+                  onError={(e) => {
+                    console.log('Error loading image:', e);
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
                 />
               ) : (
                 profileData.nama ? profileData.nama.split(' ').map(n => n[0]).join('') : <UserRound size={64}/>

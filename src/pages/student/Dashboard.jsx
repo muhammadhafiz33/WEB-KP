@@ -69,7 +69,7 @@ const Dashboard = () => {
         <div className="text-center">Memuat statistik...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statCards.map(({ title, value, icon: Icon, color, bgColor }, index) => (
+          {statCards.map(({ title, value, icon, color, bgColor }, index) => (
             <div key={index} className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
@@ -77,7 +77,7 @@ const Dashboard = () => {
                   <p className="text-3xl font-bold text-gray-900 mt-1">{value !== undefined ? value : '-'}</p>
                 </div>
                 <div className={`w-14 h-14 ${bgColor} rounded-full flex items-center justify-center`}>
-                  <Icon className={`w-6 h-6 ${color}`} />
+                  {React.createElement(icon, { className: `w-6 h-6 ${color}` })}
                 </div>
               </div>
             </div>

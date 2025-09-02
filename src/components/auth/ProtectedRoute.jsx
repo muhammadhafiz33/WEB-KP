@@ -6,41 +6,44 @@ const ProtectedRoute = ({ allowedRoles }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Jalankan logika ini hanya sekali saat komponen dimuat
     const token = localStorage.getItem('token');
     const userString = localStorage.getItem('user');
-    
+
     if (token && userString) {
       try {
-        const userData = JSON.parse(userString);
-        setUser(userData);
-      } catch (e) {
-        console.error("Failed to parse user data from localStorage", e);
-        // Jika parsing gagal, anggap tidak ada user
+        setUser(JSON.parse(userString));
+      } catch (err) {
+        console.error('Invalid user data in localStorage:', err);
         localStorage.clear();
       }
     }
+
     setIsLoading(false);
   }, []);
 
-  // Tampilkan loading screen sementara data dimuat
   if (isLoading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '24px' }}>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen text-2xl">
+        Loading...
+      </div>
+    );
   }
 
-  // Cek apakah pengguna sudah login
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Cek apakah peran user diizinkan untuk mengakses rute ini
   if (!allowedRoles.includes(user.role)) {
-    // Jika tidak diizinkan, arahkan ke dashboard yang sesuai
-    const redirectTo = user.role === 'ADMIN' ? '/admin/dashboard' : '/student/dashboard';
+    const redirectTo =
+      user.role === 'ADMIN'
+        ? '/admin/dashboard'
+        : user.role === 'PEMBIMBING'
+        ? '/pembimbing/dashboard'
+        : '/student/dashboard';
+
     return <Navigate to={redirectTo} replace />;
   }
 
-  // Jika semua verifikasi berhasil, izinkan akses ke halaman
   return <Outlet />;
 };
 

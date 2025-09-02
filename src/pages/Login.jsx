@@ -3,23 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Eye, EyeOff } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-// Ganti URL ini sesuai dengan alamat backend Anda
 const API_URL = 'http://localhost:4000/api/auth';
 
 const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     identifier: '',
-    password: ''
+    password: '',
   });
-  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -27,29 +26,20 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    const payload = {
-      identifier: formData.identifier,
-      password: formData.password,
-    };
-
     try {
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Terjadi kesalahan');
-      }
-      
+      if (!response.ok) throw new Error(data.message || 'Terjadi kesalahan');
+
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      
+
       Swal.fire({
         icon: 'success',
         title: 'Login Berhasil!',
@@ -58,14 +48,18 @@ const Login = () => {
         showConfirmButton: false,
         timerProgressBar: true,
       }).then(() => {
-        // Navigasi dilakukan berdasarkan peran yang diterima dari backend
-        if (data.user.role === 'MAHASISWA') {
-          navigate('/student/dashboard');
-        } else if (data.user.role === 'ADMIN') {
-          navigate('/admin/dashboard');
-        } else {
-          // Navigasi default jika peran tidak dikenali
-          navigate('/');
+        switch (data.user.role) {
+          case 'MAHASISWA':
+            navigate('/student/dashboard');
+            break;
+          case 'ADMIN':
+            navigate('/admin/dashboard');
+            break;
+          case 'PEMBIMBING':
+            navigate('/pembimbing/dashboard');
+            break;
+          default:
+            navigate('/');
         }
       });
 
@@ -89,13 +83,14 @@ const Login = () => {
             <Building2 className="h-12 w-12 text-blue-600" />
           </div>
           <h1 className="text-4xl font-extrabold text-blue-900">
-            <span className="text-black italic">Jurnal</span><span className="italic">KP</span>
+            <span className="text-black italic">Jurnal</span>
+            <span className="italic">KP</span>
           </h1>
           <p className="text-sm text-gray-600 mt-1">Jurnal Kerja Praktek</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="relative">
+          <div>
             <label className="text-sm text-blue-900 font-medium mb-1 block">
               Username atau NIM
             </label>
@@ -139,16 +134,14 @@ const Login = () => {
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm">
-          <p className="text-gray-600">
-            Belum punya akun?{' '}
-            <button
-              onClick={() => navigate('/register')}
-              className="text-blue-600 font-medium hover:underline"
-            >
-              Daftar sekarang
-            </button>
-          </p>
+        <div className="mt-6 text-center text-sm text-gray-600">
+          Belum punya akun?{' '}
+          <button
+            onClick={() => navigate('/register')}
+            className="text-blue-600 font-medium hover:underline"
+          >
+            Daftar sekarang
+          </button>
         </div>
       </div>
     </div>
