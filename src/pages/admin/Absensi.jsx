@@ -51,7 +51,7 @@ const Absensi = () => {
         setIsLoadingIzin(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:4000/api/absensi/izin/history/all', {
+            const response = await fetch('http://localhost:4000/api/admin/izin/history', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('Gagal memuat data izin');
@@ -149,7 +149,7 @@ const Absensi = () => {
         try {
             const token = localStorage.getItem('token');
             // UBAH BARIS INI
-            const response = await fetch('http://localhost:4000/api/absensi/izin/export/pdf', {
+            const response = await fetch('http://localhost:4000/api/admin/izin/export/pdf', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) {

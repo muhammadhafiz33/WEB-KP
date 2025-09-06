@@ -47,7 +47,8 @@ const Absensi = () => {
             // Simpan riwayat izin
             setIzinHistory(izin);
         } catch (err) {
-            showAlert("Error", err.message, "error");
+            // Tampilkan error di console saja
+            console.error('Error fetching status and history:', err);
         } finally {
             setIsLoading(false);
         }
@@ -60,10 +61,9 @@ const Absensi = () => {
     }, []);
 
     // 🔹 Time check
+    // Perbaikan: Fungsi ini sekarang selalu mengembalikan 'true' untuk menonaktifkan validasi waktu
     const isCheckInTime = () => {
-        const h = currentTime.getHours();
-        const m = currentTime.getMinutes();
-        return (h === 6 && m >= 50) || (h === 7) || (h === 8 && m <= 30);
+        return true;
     };
 
     const isCheckOutTime = () => {

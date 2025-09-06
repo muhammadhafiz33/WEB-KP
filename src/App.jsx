@@ -30,7 +30,7 @@ import PembimbingDashboard from './pages/pembimbing/Dashboard';
 import PembimbingMahasiswa from './pages/pembimbing/Mahasiswa';
 import PembimbingJurnal from './pages/pembimbing/Jurnal';
 import PembimbingProfile from './pages/pembimbing/Profile';
-
+import PembimbingAbsensi from './pages/pembimbing/Absensi'; // Tambahkan baris ini
 
 function App() {
   return (
@@ -74,6 +74,7 @@ function App() {
               <Route path="dashboard" element={<PembimbingDashboard />} />
               <Route path="mahasiswa" element={<PembimbingMahasiswa />} />
               <Route path="jurnal" element={<PembimbingJurnal />} />
+              <Route path="absensi" element={<PembimbingAbsensi />} />
               <Route path="profile" element={<PembimbingProfile />} />
             </Route>
           </Route>

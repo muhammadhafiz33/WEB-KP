@@ -140,12 +140,21 @@ const Jurnal = () => {
   };
 
   const handleExportPDF = async () => {
+    Swal.fire({
+      title: 'Mengekspor Laporan',
+      text: 'Mohon tunggu sebentar...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/jurnals/export`, {
+      const res = await fetch(`${API_URL}/jurnals/export/pdf`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Gagal mengekspor laporan");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || "Gagal mengekspor laporan");
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = Object.assign(document.createElement("a"), {
@@ -154,6 +163,7 @@ const Jurnal = () => {
       });
       a.click();
       URL.revokeObjectURL(url);
+      Swal.close();
       Swal.fire("Berhasil!", "Laporan berhasil diekspor.", "success");
     } catch (e) {
       Swal.fire("Error", e.message, "error");
@@ -265,7 +275,7 @@ const Jurnal = () => {
                         <h4 className="font-medium text-gray-900 mb-1">Output/Hasil:</h4>
                         <p className="text-gray-700">{jurnal.deskripsi}</p>
                       </div>
-                    </div>
+                  </div>
                   </div>
                   
                   <div className="flex items-center space-x-2 ml-4">

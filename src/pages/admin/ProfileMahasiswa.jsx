@@ -79,7 +79,6 @@ const ProfileMahasiswa = () => {
               <InfoItem icon={Mail} text={mahasiswa.email} />
               <InfoItem icon={Phone} text={mahasiswa.telepon} />
               <InfoItem icon={MapPin} text={mahasiswa.alamat} />
-              <InfoItem icon={Calendar} text={formatDate(mahasiswa.tanggal_lahir)} />
             </div>
           </div>
         </div>
@@ -91,8 +90,6 @@ const ProfileMahasiswa = () => {
               <DetailItem label="Fakultas" value={mahasiswa.fakultas} />
               <DetailItem label="Program Studi" value={mahasiswa.jurusan} />
               <DetailItem label="Angkatan" value={mahasiswa.angkatan} />
-              <DetailItem label="IPK" value={mahasiswa.ipk} />
-              <DetailItem label="SKS" value={mahasiswa.sks} />
             </div>
           </div>
 
