@@ -17,12 +17,20 @@ import AdminJurnal from './pages/admin/Jurnal';
 import AdminMahasiswa from './pages/admin/Mahasiswa';
 import AdminProfile from './pages/admin/Profile';
 import AdminProfileMahasiswa from './pages/admin/ProfileMahasiswa'; 
+import AdminPembimbing from './pages/admin/Pembimbing'; // Tambahkan baris ini
 
 // Import semua halaman Mahasiswa
 import StudentDashboard from './pages/student/Dashboard';
 import StudentAbsensi from './pages/student/Absensi';
 import StudentJurnal from './pages/student/Jurnal';
 import StudentProfile from './pages/student/Profile';
+
+// Import semua halaman Pembimbing
+import PembimbingDashboard from './pages/pembimbing/Dashboard';
+import PembimbingMahasiswa from './pages/pembimbing/Mahasiswa';
+import PembimbingJurnal from './pages/pembimbing/Jurnal';
+import PembimbingProfile from './pages/pembimbing/Profile';
+
 
 function App() {
   return (
@@ -51,10 +59,22 @@ function App() {
               <Route index element={<Navigate to="dashboard" />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="mahasiswa" element={<AdminMahasiswa />} />
+              <Route path="pembimbing" element={<AdminPembimbing />} /> {/* Tambahkan baris ini */}
               <Route path="jurnal" element={<AdminJurnal />} />
               <Route path="absensi" element={<AdminAbsensi />} />
               <Route path="profile" element={<AdminProfile />} />
               <Route path="mahasiswa/:nim" element={<AdminProfileMahasiswa />} />
+            </Route>
+          </Route>
+          
+          {/* Rute yang Dilindungi untuk PEMBIMBING */}
+          <Route element={<ProtectedRoute allowedRoles={['PEMBIMBING']} />}>
+            <Route path="/pembimbing" element={<Layout isPembimbing={true} />}>
+              <Route index element={<Navigate to="dashboard" />} />
+              <Route path="dashboard" element={<PembimbingDashboard />} />
+              <Route path="mahasiswa" element={<PembimbingMahasiswa />} />
+              <Route path="jurnal" element={<PembimbingJurnal />} />
+              <Route path="profile" element={<PembimbingProfile />} />
             </Route>
           </Route>
           

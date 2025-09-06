@@ -15,6 +15,7 @@ const Header = ({ isAdmin = false, isPembimbing = false }) => {
   const adminMenuItems = [
     { path: '/admin/dashboard', label: 'Dashboard' },
     { path: '/admin/mahasiswa', label: 'Data Mahasiswa' },
+    { path: '/admin/pembimbing', label: 'Kelola Pembimbing' },
     { path: '/admin/jurnal', label: 'Jurnal Kegiatan' },
     { path: '/admin/absensi', label: 'Absensi' },
   ];
@@ -23,7 +24,7 @@ const Header = ({ isAdmin = false, isPembimbing = false }) => {
     { path: '/pembimbing/dashboard', label: 'Dashboard' },
     { path: '/pembimbing/mahasiswa', label: 'Mahasiswa Bimbingan' },
     { path: '/pembimbing/jurnal', label: 'Review Jurnal' },
-    { path: '/pembimbing/profile', label: 'Profil Saya' },
+    { path: '/pembimbing/absensi', label: 'Monitoring Absensi' },
   ];
 
   const menuItems = isAdmin ? adminMenuItems : isPembimbing ? pembimbingMenuItems : studentMenuItems;
@@ -75,11 +76,9 @@ const Header = ({ isAdmin = false, isPembimbing = false }) => {
                   <circle cx="16" cy="16" r="2" fill="white"/>
                 </svg>
               ) : isPembimbing ? (
-                <svg viewBox="0 0 32 32" className="w-full h-full">
-                  <path d="M16 4 C10.477 4 6 8.477 6 14 C6 20.312 16 28 16 28 C16 28 26 20.312 26 14 C26 8.477 21.523 4 16 4 Z" fill="#ef4444" stroke="#dc2626" strokeWidth="1"/>
-                  <circle cx="16" cy="14" r="6" fill="#fecaca"/>
-                  <circle cx="16" cy="14" r="2" fill="white"/>
-                </svg>
+                <div className="w-full h-full flex items-center justify-center p-2">
+                  <User size={36} className="text-red-600" />
+                </div>
               ) : (
                 <svg viewBox="0 0 32 32" className="w-full h-full">
                   <path 
